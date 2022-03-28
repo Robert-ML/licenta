@@ -1,0 +1,17 @@
+1 - Load image
+
+2 - Reduce size to `tumbnail_size`
+
+3 - Apply Median Blur on the image to remove noise
+
+-  Extra: Apply Canny edge detection like it would be applied in the circle detection step to see what the algorithm sees
+
+4 - `get_tire_circles`
+
+  4.1 - Find the most proeminent circle in the image, with a radius in the specified range
+
+  4.2 - `get_circles_around_main` uses the radius of the most proeminent circle plus an incrementing offset as the new limit of the radius range when searching for bigger and smaller circles in the image
+
+  4.3 - `reduce_circles` uses `cd` and `rd` to determine if 2 circles are simmilar enough to be combined into a single one
+
+  4.4 - `get_concentric_circles` in images where we could reduce them to only 2 circles, takes the smaller circle as truth and creates a bigger circle with the same center as the smallest one and radius = d(center_small_circle_, center_big_circle_) + r_big_circle
