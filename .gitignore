@@ -334,6 +334,7 @@ ASALocalRun/
 *.jpg
 *.jpeg
 *.png
+notebook/training/
 
 # Local History for Visual Studio
 .localhistory/
