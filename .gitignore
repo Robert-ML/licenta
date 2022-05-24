@@ -330,6 +330,11 @@ ASALocalRun/
 # MFractors (Xamarin productivity tool) working folder
 .mfractor/
 
+# By extension
+*.jpg
+*.jpeg
+*.png
+
 # Local History for Visual Studio
 .localhistory/
 dataset/masini/001/20211021_131724.jpg
