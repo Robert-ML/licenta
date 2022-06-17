@@ -1,0 +1,105 @@
+\newcommand{\HeaderLineSpace}{-0.25cm}
+
+\newcommand{\UniTextEN}{UNIVERSITY POLITEHNICA OF BUCHAREST \\[\HeaderLineSpace]
+FACULTY OF AUTOMATIC CONTROL AND COMPUTERS \\[\HeaderLineSpace]
+COMPUTER SCIENCE AND ENGINEERING DEPARTMENT\\}
+\newcommand{\DiplomaEN}{DIPLOMA PROJECT}
+\newcommand{\AdvisorEN}{Thesis advisor:}
+\newcommand{\BucEN}{BUCHAREST}
+
+\newcommand{\frontPage}[6]{
+\begin{titlepage}
+\begin{center}
+{\Large #1}  % header (university, faculty, department)
+\vspace{50pt}
+\begin{tabular}{p{5cm}p{5cm}}
+\includegraphics[scale=0.8]{img/logos/upb-logo.jpg} &
+	\includegraphics[scale=0.5,trim={14cm 11cm 6cm 5cm},clip=true]{img/logos/cs-logo.pdf}
+\end{tabular}
+
+\vspace{105pt}
+{\Huge #2}\\                           % diploma project text
+\vspace{40pt}
+{\Large #3}\\ \vspace{0pt}  % project title
+{\Large #4}\\                          % project subtitle
+\vspace{40pt}
+{\LARGE \Name}\\                   % student name
+\end{center}
+\vspace{60pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}p{6cm}r}
+&{\large\textbf{#5}}\vspace{10pt}\\      % scientific advisor
+&{\large \AdvisorA}\vspace{10pt}\\                       % advisor 1 name
+&{\large \AdvisorB}                         % advisor 2 name
+\end{tabular*}
+\vspace{20pt}
+\begin{center}
+{\large\textbf{#6}}\\                                % bucharest
+\vspace{0pt}
+{\normalsize \Year}
+\end{center}
+\end{titlepage}
+}
+
+\newcommand{\frontPageEN}{\frontPage{\UniTextEN}{\DiplomaEN}{\ProjectTitleEN}{\AdvisorEN}{\BucEN}}
+
+\linespread{1.15}
+\setlength\parindent{0pt}
+\setlength\parskip{.28cm}
+
+%% Abstract macro
+\newcommand{\AbstractPage}{
+\begin{titlepage}
+\textbf{\large ABSTRACT}\par
+\AbstractEN \vfill
+\textbf{\large SINOPSIS}\par
+\AbstractRO\par\vfill
+\end{titlepage}
+}
+
+%% Thank you macro
+% \newcommand{\ThanksPage}{
+% \begin{titlepage}
+% {\noindent \large\textbf{MULȚUMIRI}}\\
+% \Thanks
+% \end{titlepage}
+% }
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%%          End of template definitions
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%
+%%   Campurile de mai jos trebuie modificate de autor. Modificati doar continutul, nu si numele fiecarei definitii
+%%
+\newcommand{\ProjectTitleEN}{Automatic tire-markings detection \& recognition}
+% \newcommand{\ProjectSubtitleEN}{Subtitle (eg: 2018 version)}
+\newcommand{\Name}{Robert-Mihai Lică}
+\newcommand{\AdvisorA}{
+    Prof. dr. ing. Iuliu Vasilescu
+}
+\newcommand{\AdvisorB}{
+    Prof. dr. ing. Daniel Rosner
+}
+
+\newcommand{\Year}{2022}
+
+% Setări document
+\title{Proiect de diplomă}
+\author{\Name}
+\date{\Year}
+
+%%
+%%   Campurile aferente rezumatului
+%%
+\newcommand{\AbstractEN}{This work shall provide an image processing pipeline for automatic detection and recognition of tire-markings from images. Because tires can be one of the most expensive perishable components of a truck, they are susceptible to illegal swapping with lower quality ones without the owner noticing. My solution shall provide an easy way to extract from an image the serial code and/or certification number in order to aid an individual to realize a swap happened. At the moment the system can identify a wheel in an image and "unwrap" it in order to obtain a rectangular image.}
+
+\newcommand{\AbstractRO}{Această lucreare o să ofere o bandă de procesare a imaginilor pentru detectarea automată și recunoașterea marcajelor de pe marginea unui cauciuc. Deoarece cauciucurile pot fi unul dintre cele mai scumpe consumabile ale unui tir, există riscul să fie schimbate ilegal cu unele de o calitate mai scăzută fără ca proprietarul să observe. Soluția mea va oferi o metodă ușoară de a extrage din imagini codul de serie și/sau numărul certificării pentru a ajuta un individ să realizeze că un schimb a avut loc. La acest moment sistemul poate identifica o roată într-o imagine și să o "desfășoare" pentru a obține o imagine dreptunghiulară. }
+
+%%
+%%   Campurile aferente paginii de multumiri
+%%
+% \newcommand{\Thanks}{(opțional) Aici puteți introduce o secțiunea specială de mulțumiri / acknowledgments. }
