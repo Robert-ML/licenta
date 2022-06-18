@@ -376,3 +376,12 @@ dataset/working/preparing/20211021_130952.jpg-2
 dataset/working/preparing/20211021_130952.jpg-3
 dataset/working/preparing/20211021_130952.jpg-4
 dataset/working/preparing/20211021_130952.jpg-5
+docs/doc/prod/main.out
+.gitignore
+docs/doc/prod/main.fdb_latexmk
+docs/doc/prod/main.blg
+docs/doc/prod/main.bbl
+docs/doc/prod/main.aux
+docs/doc/prod/main.toc
+docs/doc/prod/main.synctex.gz
+docs/doc/prod/main.fls
