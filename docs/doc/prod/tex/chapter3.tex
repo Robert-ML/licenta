@@ -3,7 +3,7 @@
 
 The solution is an image processing pipeline that would extract from the side picture of a tire the specifications written on it. These specifications are present in the form of embossed letters on the tire's exterior walls.
 
-The system's input data are photos taken with a Cannon EOS 1300D that has a resolution of 5184 by 3456 pixels and a lens (TODO: specificatiile lentilei). While taking the pictures, the distance from the lens to the tire's side was approximately (TODO: distanta aproximativa pana la cauciuc cand fac poze). While capturing the images, I was careful to catch the entire wheel in the image because detecting half wheels or arcs would have proven difficult. One more adjustment I did was the camera placement in regards to the wheel's axle. I decided to be approximately in line with it in order for the wheel to appear circular in the image. If I wouldn't have done so, the tire would have had an oval shape. By controlling the distance between the camera and the wheel, as  well as the camera position in regards to the wheel's axle, I consider I will be able to detect the tire in the image more reliably.
+The system's input data are photos taken with a Cannon EOS 1300D that has a resolution of 5184 by 3456 pixels and a lens (TODO: specificatiile lentilei). While taking the pictures, the distance from the lens to the tire's side was approximately (TODO: distanta aproximativa pana la cauciuc cand fac poze). While capturing the images, I was careful to catch the entire wheel in the image because detecting half wheels or arcs would have proven difficult. One more adjustment I did was the camera placement in regards to the wheel's axle. I decided to be approximately in line with it in order for the wheel to appear circular in the image. If I wouldn't have done so, the tire would have had an oval shape. By controlling the distance between the camera and the wheel, as  well as the camera position in regards to the wheel's axle, I consider I will be able to detect the tire in the image more reliably. Before feeding the images to the processing pipeline, they are made square by cropping them to 3456 pixels and keeping the middle.
 
 By desiring to not have a complex setup and not require supplementary light sources, the images were taken using the ambient light. This proved to increase the problem's difficulty quite considerably when it came to detecting the regions of text, because the contrast between the embossed letters and the background image got even smaller. Multiple approaches were considered in TODO section 3.2 Text Detection and in the end one proved fruitful in delivering acceptable results.
 
@@ -20,7 +20,7 @@ To better explain how this was accomplished, this step was split in multiple sub
 
 I detect where in the image are the circles representing the outer and inner borders of the tire and get their center’s coordinates. The two detected circles might not have a common center because of the imperfections in taking the images, but I account and try to correct for that through a series of heuristics.
 
-Because this is the beginning of the pipeline, I introduced a step to \hyperref[subsubsec:equalization]{equalization} the images and have some independence from the lighting conditions. Then I detected the first circles in the image using TODO: \hyperref[subsubsec:hough_circle_transform]{Hough Circle Transform} and filtered its output through a series of TODO: heuristics.
+Because this is the beginning of the pipeline, I introduced a step to \hyperref[subsubsec:equalization]{equalization} the images and have some independence from the lighting conditions. Then I detected the first circles in the image using TODO: \hyperref[subsubsec:hough_circles_transform]{Hough Circle Transform} and filtered its output through a series of \hyperref[subsubsec:circ_det_heuristics]{heuristics}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% a) EQUALIZATION                                      %%%
@@ -40,7 +40,55 @@ A deviation from this standard equalization is Adaptive Histogram Equalization (
 
 \paragraph*{Algorithm:}\mbox{}\par
 
-CLAHE, described in pseudo-code in Algorithm \ref{alg:CLAHE} in accordance to the implementation found in \cite{site:CLAHE_code} and the explanation in the paper \cite{article:CLAHE_explanation}.
+\begin{algorithm}[h]
+    \caption{CLAHE}\label{alg:CLAHE}
+    \begin{algorithmic}[1]
+        \Require $img$ be a $X\times X$ matrix; $cl \epsilon [0, 1]$; $k$
+
+        \Ensure $k \mid X$
+
+        \State $S \gets $ ($img$ split into $k\times k$ cells)
+
+        \For {$s$ in $S$}
+            \State $H_s \gets histogram(s)$
+            \State $H_{res}, N_{remain} \gets clip(H_s, cl)$
+            % \State $N_{avg} \gets (k \times k) \div N_{gray}$
+            % \State $N_{CL} \gets N_{clip} \times N_{avg}$
+            % \State $N_{\Sigma\_clip} \gets \sum_{i=0}^{N_{gray}} max(0, H_s[i] - N_{CL})$
+            % \State $N_{avg\_gray} \gets N_{\Sigma\_clip} \div N_{gray}$
+            % \State $N_{remain} \gets N_{\Sigma\_clip}$
+            % \For {$i=0:+1:N_{gray}$}
+            %     \If {$H_s[i] > N_{CL}$}
+            %         \State $H_{res}[i] \gets N_{CL}$
+            %     \ElsIf {($H_s[i] + N_{avg\_gray}) > N_{CL}$}
+            %         \State $N_{remain} \gets N_{remain} - (N_{CL} - H_s[i])$
+            %         \State $H_{res}[i] \gets N_{CL}$
+            %     \Else
+            %         \State $N_{remain} \gets N_{remain} - N_{avg\_gray}$
+            %         \State $H_{res}[i] \gets H_s[i] + N_{CL}$
+            %     \EndIf
+            % \EndFor
+
+            \State $H_{res} \gets redistribute(H_{res}, N_{remain})$
+            % \While {$N_{remain} > 0$}
+            %     \State $step \gets N_{gray} \div N_{remain}$
+            %     \For {$i=0:step:N_{gray}$}
+            %         \If{$H_{res}[i] < N_{CL}$}
+            %             \State $H_{res}[i] \gets H_{res}[i] + 1$
+            %             \State $N_{remain} \gets N_{remain} - 1$
+            %         \EndIf
+            %     \EndFor
+            % \EndWhile
+
+            \State $s \gets adjust\_cell(s, H_{res})$
+        \EndFor
+
+        \State $img \gets$ interpolate cells $S$
+
+    \end{algorithmic}
+\end{algorithm}
+
+CLAHE is described in pseudo-code in Algorithm \ref{alg:CLAHE} in accordance to the implementation found in \cite{site:CLAHE_code} and the explanation in the paper \cite{article:CLAHE_explanation}.
 
 On $line 1$ we split the image in multiple cells of size $k$ by $k$ because CLAHE is an adaptive algorithm.
 Then, for each of the cells we calculate their histogram to find out how many different pixel values they contain ($N_{gray}$). To perform the clipping, we need to calculate a few things:
@@ -49,13 +97,13 @@ $N_{avg} \gets (k \times k) \div N_{gray}$, that is the number of pixels in the 
 
 $N_{CL} \gets cl \times N_{avg}$, the clipping limit calculated based on input parameter $cl$;
 
-$N_{\Sigma\_clip} \gets \sum_{i=0}^{N_{gray}} max(0, H_s[i] - N_{CL})$, is the number of pixels that need to be clipped;
+$N_{\Sigma\_clip} \gets \sum_{i=0}^{N_{gray}} max(0, H_s[i] - N_{CL})$, is the number of pixels that need to be clipped, $H_s[i]$ is the pixel count for a certain pixel value;
 
 $N_{avg\_gray} \gets N_{\Sigma\_clip} \div N_{gray}$, is how many pixels in average we will modify in addition to have a certain value.
 
 Then, we iterate through all the pixel values in the histogram and create a new one. If the pixel count is $\geq$ than $N_{CL}$, we will clip that pixel value. Else, we will add to the pixel count $N_{avg\_gray}$ and if we exceed the clipping limit, we floor to it and take note of this in the form of $N_remain$. After this step, the histogram would look like in figure \ref{fig:CLAHE_hist}.
 
-\begin{figure}[h!]
+\begin{figure}
     \centering
     \includegraphics[width=0.4\columnwidth]{img/algos/Clahe-redistribution.eps}
     \caption{the histogram after first clipping, source: TODO wikipedia}
@@ -70,91 +118,126 @@ Before starting to compute the next cell, we adjust the current one acoording to
 
 After all the cels were modified and equalized, we can stisch them back together. But because we had a cell by cell approach to calculating the histogram, border pixels might have very different values. This is why an extra step of bilinear interpolation is performed on the border pizels of each of the cells.
 
-\begin{algorithm}[t]
-\caption{CLAHE}\label{alg:CLAHE}
-\begin{algorithmic}[1]
-    \Require $img$ be a $X\times X$ matrix; $cl \epsilon [0, 1]$; $k$
-
-    \Ensure $k \mid X$
-
-    \State $S \gets $ ($img$ split into $k\times k$ cells)
-
-    \For {$s$ in $S$}
-        \State $H_s \gets histogram(s)$
-        \State $H_{res}, N_{remain} \gets clip(H_s, cl)$
-        % \State $N_{avg} \gets (k \times k) \div N_{gray}$
-        % \State $N_{CL} \gets N_{clip} \times N_{avg}$
-        % \State $N_{\Sigma\_clip} \gets \sum_{i=0}^{N_{gray}} max(0, H_s[i] - N_{CL})$
-        % \State $N_{avg\_gray} \gets N_{\Sigma\_clip} \div N_{gray}$
-        % \State $N_{remain} \gets N_{\Sigma\_clip}$
-        % \For {$i=0:+1:N_{gray}$}
-        %     \If {$H_s[i] > N_{CL}$}
-        %         \State $H_{res}[i] \gets N_{CL}$
-        %     \ElsIf {($H_s[i] + N_{avg\_gray}) > N_{CL}$}
-        %         \State $N_{remain} \gets N_{remain} - (N_{CL} - H_s[i])$
-        %         \State $H_{res}[i] \gets N_{CL}$
-        %     \Else
-        %         \State $N_{remain} \gets N_{remain} - N_{avg\_gray}$
-        %         \State $H_{res}[i] \gets H_s[i] + N_{CL}$
-        %     \EndIf
-        % \EndFor
-
-        \State $H_{res} \gets redistribute(H_{res}, N_{remain})$
-        % \While {$N_{remain} > 0$}
-        %     \State $step \gets N_{gray} \div N_{remain}$
-        %     \For {$i=0:step:N_{gray}$}
-        %         \If{$H_{res}[i] < N_{CL}$}
-        %             \State $H_{res}[i] \gets H_{res}[i] + 1$
-        %             \State $N_{remain} \gets N_{remain} - 1$
-        %         \EndIf
-        %     \EndFor
-        % \EndWhile
-
-        \State $s \gets adjust\_cell(s, H_{res})$
-    \EndFor
-
-    \State $img \gets$ interpolate cells $S$
-
-\end{algorithmic}
-\end{algorithm}
-
 \paragraph*{Results:}\mbox{}\par
 After equalization is applied, if the input image's histogram looked like TODO: Figure, now it looks like TODO: Figure.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%% b) HOUGH CIRCLE TRANFORM                             %%%
+%%% b) HOUGH CIRCLES TRANFORM                             %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsubsection{Hough Circle Transform}
-\label{subsubsec:hough_circle_transform}
+\subsubsection{Hough Circles Transform (HCT)}
+\label{subsubsec:hough_circles_transform}
 
 \paragraph*{Accomplishes:}\mbox{}\par
+It detects circular shapes present in an image. The ones we are interested in are the outer and inner rims of the tire.
 
 \paragraph*{Reasoning:}\mbox{}\par
+The reasoning for why we want to detect the tire in the image is twofold. Firstly, the text searching part is a computational expensive one and we want to reduce the search space from the whole 3456 by 3456 pixels to usually a forth of that. The second reason is that the text is present in the image in a circular form, while the vast majority of optical character recognition (OCR) software is performing best on text that is aligned along one dimension only. So, by detecting the tire's circular shape in the image, we can transform the tire into its unwrapped version (that also has a smaller pixel count).
 
 \paragraph*{Algorithm:}\mbox{}\par
 
+\begin{algorithm}
+    \caption{Hough Circles Transform}\label{alg:Hough_Circles}
+    \begin{algorithmic}[1]
+        \Require $img$; $r_{min}$; $r_{max}$; $dp$; $canny\_params$
+
+        \State $blur \gets gaussian\_blur(img)$
+        \State $gray \gets color2gray(blur)$
+        \State $edges \gets canny(gray, canny\_params)$
+
+        \For{$r=r_{min}:+1:r_{max}$}
+            \State $acc[i] \gets matrix(shape(img) \div dp)$
+            \For{each pixel $p > 0$ in $edges$}
+                \State $acc[i] \gets accumulate(acc[i], p, r)$
+            \EndFor
+        \EndFor
+    \State $center, radius \gets extract(acc)$
+    \end{algorithmic}
+\end{algorithm}
+
+Hough Circles Transform is particularization of the classical Hough Transform \cite{site:circular_hough_transform} and its scope is to extract features from images. The original algorithm is searching for a circle with a known radius, but as can be seen in Algorithm \ref{alg:Hough_Circles}, it can be generalized to an interval of radii.
+
+The first 2 steps in the algorithm are to apply Gaussian Blur \cite{site:Gaussian_blur} (to remove the noise that follows a Gaussian distribution) and convert the color image into gray-scale.
+
+Then it uses Canny Edge Detector \cite{site:Canny_edge_detection} to obtain a new image that contains only the outlines where the algorithm considered a boundary between 2 objects exists. An example can be seen in Figure \ref{fig:canny_output_tire}, where each white pixel represents an edge.
+
+On line $4$, it can be seen the $loop$ that will probe for the radius interval that was requested.
+
+For each radius that the algorithm will probe, will create an accumulator matrix that is $dp$ times smaller than the original image. The purpose of this matrix will be explained shortly.
+
+The central part of the algorithm is the for loop on line $6$. It goes through all the pixels that resulted in being edges and finds their corresponding position in the smaller $acc[i]$ matrix. Then, all around that point in the accumulator matrix at distance $r$, it increments the corresponding cell. 3 iterations of this can be seen in in Figure \ref{fig:Hough_circle_accumulator}.
+
+Because the core algorithm probes for a specific radius, multiple accumulator matrices are used. So, the last step of the algorithm (line $10$) is to parse all the accumulators and find the most incremented cell (the red dot in Figure \ref{fig:Hough_circle_accumulator}). That cell is considered the center of the circle and the radius is corresponding to the accumulator matrix it was found in.
+
+\begin{figure}
+    \centering
+    \begin{minipage}[c]{0.33\linewidth}
+        \centering
+        \includegraphics[width=4.25cm, height=4.25cm]{img/algos/Canny_wheel.JPG}
+            \caption{Canny output}
+            \label{fig:canny_output_tire}
+    \end{minipage}\hfill
+    \begin{minipage}[c]{0.33\linewidth}
+        \centering
+        \includegraphics[width=4.25cm, height=4.25cm]{img/algos/Canny_wheel.JPG}
+            \caption{HCT accumulator}
+            \label{fig:Hough_circle_accumulator}
+    \end{minipage}
+    \begin{minipage}[c]{0.33\linewidth}
+        \centering
+        \includegraphics[width=4.25cm, height=4.25cm]{img/algos/Hough-Circles-Transform_many_circles.png}
+        \caption{HCT result}
+        \label{fig:Hough-Circles-Transform_result}
+    \end{minipage}
+\end{figure}
+
 \paragraph*{Results:}\mbox{}\par
+Because tires have different dimensions and an outer and inner rim, I have to search for multiple circles in the image. So, I probed for multiple radii and the algorithm found multiple circles in the image, as can be seen in Figure \ref{fig:Hough-Circles-Transform_result}. This will be the input for the next step, where through a series of heuristics the circle count will be reduced to only the most concentric ones and hopefully only 2.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% c) HEURISTICS                                        %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsubsection{Heuristics}
-\label{subsubsec:heuristics}
+\label{subsubsec:circ_det_heuristics}
 
 \paragraph*{Accomplishes:}\mbox{}\par
+Reduces the number of detected circles in the previous step and remains only with 2 concentric circles representing the tire's inner and outer rims. If his step fails to remain with only 2 circles, then the image is discarded.
 
 \paragraph*{Reasoning:}\mbox{}\par
+There are many types of tires in the wild with different shapes and sizes, it was better in the previous step to detect more circles in the image than to look for only 2 circles. When looking only for 2 circles using the Hough Circular Transform, the car's wheel arc can be falsely detected as a circle. Or the wheel cap can have a pattern on it that would falsely trick the circle detection algorithm to say that the 2 most prominent circles are on the cap. Because of this reason, I preferred to detect many false positives and at this stage filter through them and remain with only the mot concentric circles that have at least a certain radius difference.
 
 \paragraph*{Algorithm:}\mbox{}\par
+The first heuristic I apply is to reduce the circles that are very similar one to another. I start from the most prominent circle found by the previous step. If the conditions $dist(c_1, c_2) < 0.5 \times size(img)$ and $\Big|r_1 - r_2\Big| < 0.37 * size(img)$ are found true, that means the circles are probably the same one and I calculate a mean one. The mean is calculated by taking the average of the centers and the average of the radii. In checking other circles, thisone will be used. The values for the thresholds were found experimentally.
+
+The second heuristic's goal is to create 2 concentric circles. At first I was taking the biggest and smallest circles and using the average of their center's coordinates to calculate a new center. This gave unsatisfactory results as the computed center would be quite far from the true one and in the unwrapping phase, it would not make the tire a continuous horizontal strip. The improvement I ended up finding was that the smaller radius circle would have the center closer to the wheel's true center, so it would be better to use the inner circle as the base rather than to calculate a new center. The reason to why the smaller circle has a better center is that the inner circle usually represents the inner rim of the tire that is a perfect circle, while the outer rim is deformed at the contact point between the ground and the wheel. That deformity can trow off the center calculated at the previous step. If more than 2 circles are present, this step is skipped and the image will be discarded as we couldn't detect the inner and outer parts of the tire. An improvement that could be made is that if more circles are found, to select the ones that have the closest centers and a radius bigger than a certain value.
 
 \paragraph*{Results:}\mbox{}\par
-
-
+The resulted concentric circles are an approximation of what the true circle might be, but it is close enough so that the tire can be unwrapped. The circle might not follow perfectly the rim of the tire because of the distortion of the wheel on the ground, or the distortion was introduced when taking the picture if the camera's sensor wasn't horizontal and in line with the wheel's axle. If we couldn't remain with 2 concentric circles at this step, the image is discarded. Otherwise, it is passed to the next step.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Convert to Polar Coordinates}
+
+\paragraph*{Accomplishes:}\mbox{}\par
+This step unwraps the tire and outputs it as a continuous horizontal strip as can be seen in Figure [TODO]. This can be done because we have detected the supposed center of the tire and its radius.
+
+\paragraph*{Reasoning:}\mbox{}\par
+The horizontal strip will help in text detection and recognition, as it is easier to work with text going in only one direction.
+
+\paragraph*{Algorithm:}\mbox{}\par
+A normal image representation is in the Cartesian domain. In this domain, a pixel is characterized as having 2 coordinates: $x$ and $y$ that we are familiar with. So a pixel is defined by 2 distances and the 2 distances have an unique pixel tied to them.
+Another domain to represent images in, is the Polar domain. In this domain, a pixel is characterized also with 2 coordinates: $angle$ and $radius$. The entire image is constructed around a center point and if information in the Cartesian domain was arranged in as the height of the image is the $y$ and the width is the $x$, here they are the $angle$ and $radius$ respectively.
+
+Because of this correlation, we can convert from one domain to another. We are interested now in converting from a Cartesian system into a Polar one as the tire has a circular shape. We can use the found circle center to make it the origin of the new Polar domain and start taking points from the image starting at the small radius until the big one. For each pixel in the image, now with the found circle's center as the image's one, we can find its new $x$ and $y$ coordinate and from them, we can calculate its representation as $angle$ and $radius$ using the following formulas.
+
+$radius = \sqrt{x^2 + y^2}$
+
+$angle = \arctan(y/x)$
+
+There is a problem though. Closer we are to the new selected center, less points are present on the surrounding circle than on a bigger one. The resulting image after the Polar transformation will have as it's width the pixel count of the pixels that were on the most outer circle's perimeter. The points closer to the center must be stretched out in order to fill in the gaps and this is solved using interpolation. New computed pixels are used to fill in the gaps.
+
+\paragraph*{Results:}\mbox{}\par
+Multiple interpolation levels were used to observe if it affects in any way the output, but the letters on the tire are far away from the center of the polar transform that even a bilinear interpolation would not affect them. Now, I have the unwrapped tire as a new image and it is ready to be processed further in order to obtain the regions of text.
 
 
 \section{Text Detection}\label{sec:text-detection}
