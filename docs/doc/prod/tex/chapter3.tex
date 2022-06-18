@@ -9,6 +9,9 @@ By desiring to not have a complex setup and not require supplementary light sour
 
 The system's steps are described in the following sections:
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Tire Unwrapping}\label{sec:tire-unwrapping}
 
 As a first step, I wanted to extract only the tire from the input image. This would help because the information I am interested in is located on it. I would also like to unwrap the tire from its disk shape (a circle with a smaller circle as a hole inside of it) into a rectangular one in order to have the writing from left to right rather than in all directions like if it was in a circle.
@@ -179,6 +182,7 @@ Because the core algorithm probes for a specific radius, multiple accumulator ma
     \end{minipage}\hfill
     \begin{minipage}[c]{0.33\linewidth}
         \centering
+        % TODO: figure
         \includegraphics[width=4.25cm, height=4.25cm]{img/algos/Canny_wheel.JPG}
             \caption{HCT accumulator}
             \label{fig:Hough_circle_accumulator}
@@ -240,16 +244,154 @@ There is a problem though. Closer we are to the new selected center, less points
 Multiple interpolation levels were used to observe if it affects in any way the output, but the letters on the tire are far away from the center of the polar transform that even a bilinear interpolation would not affect them. Now, I have the unwrapped tire as a new image and it is ready to be processed further in order to obtain the regions of text.
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Text Detection}\label{sec:text-detection}
+Now that the initial image was processed and just the tire region was kept and unwrapped to have a rectangular form with the text spanning from left to right, the text detection phase can begin. The goal now is to obtain a bitmap of the rectangular tire with regions where text is present. This phase is useful because it will further reduce the space where we have to perform text recognition, and because the goal is to reduce, false-positives are permitted in an acceptable limit. If we can reduce the image search space by at least 80\%, this step is considered successful and the text recognition can begin. Otherwise the image is discarded.
 
+Before starting with the pipeline's steps, it must be mentioned the unsuccessful initial attempts at detecting the text in the image. The main culprit was the low contrast between the embossed letters (that make up the tire-markings) and their background. Because the letters are not a distinctive feature as can be seen in Figure [TODO: ref la figure din chap 1, e una pe acolo poate chiar 2], if they appear in the output of a processing algorithm, they are always accompanied by noise or other features on the tire that do not interest us.
+
+For the beginning, I tried with Sobel image gradient [TODO: cite] to obtain a gradient of change in the image, but it did not look useful as can be seen in Figure [TODO:].
+
+Then I tried further by applying Canny Edge Detector \cite{site:Canny_edge_detection} but in order to obtain usable results, I had to fine-tune its parameters and these were extremely influenced by the color of the tire, the lighting conditions and noise. A somewhat usable output after fine-tuning can be seen in Figure [TODO:]. Noise was a real issue because if too much blurring was applied to remove the noise the letters would lose shape.
+
+I also tried some thresholding techniques. OTSU Thresholding [TODO: cite] proved useful because it is a global algorithm and different materials on the wheel reflect light in different amounts so a single threshold is not practical. I tried also the option of adaptive Thresholding and it proved useful as can be seen in Figure [TODO:], but it suffers also from parameter tuning, just like the Canny Edge Detector and because the system must be robust this is not acceptable.
+
+Before resorting to Machine Learning models to solve this step (a thing that I avoided in order to keep the processing pipeline simple and not computationally intensive), a solution appeared. Filtering certain frequencies in the frequency domain of the image showed that only the letters can be left prominent in a segment of the image. From this stepping stone, the following steps were devised in order to obtain a bitmap with supposedly text regions
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Segmentation}
 
+\paragraph*{Accomplishes:}\mbox{}\par
+Splits the image in smaller cells in order to perform operations on each one of them. These cells are overlapped a certain percentage to be able to vote on them regions of interest.
+
+\paragraph*{Reasoning:}\mbox{}\par
+While searching a way to obtain the text region in an image, frequency filtering proved useful and not needing parameter tuning. The less ideal part is that the last step is OTSU thresholding that is a global algorithm. While not performing useful if we were to process the entire image at the same time, it proved very helpful in binarizing smaller areas of the big image. So, I decided to split the original image in overlapping cells.
+
+The cells overlap because in the end a voting process is employed to remove regions that were considered text in just a few of the segments.
+
+\paragraph*{Algorithm:}\mbox{}\par
+I need to calculate the corners of cells that have a certain overlap between them. This overlap is present on the $x$ and $y$ axes. Firstly, I calculate the number of cells that will be needed on each of the axes with the formula:
+\[N = \frac{L - o}{no}\]
+where $L$ is the number of pixels, $o$ is the size of the overlap region and $no$ is the region of a cell that is not overlapped.
+
+\paragraph*{Results:}\mbox{}\par
+Now the big picture was split in multiple smaller overlapping cells that will be further processed individually.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Segment Binarization}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% a) Frequency Filtering                               %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Image Frequency Filtering}
+\label{subsubsec:frequency-filtering}
+
+\paragraph*{Accomplishes:}\mbox{}\par
+This is a band-pass filter applied to the frequency domain of the segment. The remaining frequencies will consist of letter shapes (the tire-markings) and some artifacts.
+
+\paragraph*{Reasoning:}\mbox{}\par
+Because the background of the tire is fairly uniform in blackness and noise, these can be considered low frequency color variations and high frequency noise respectively. By eliminating certain bands from the frequency domain of the image, we are left with the letter shapes that could be processed further to enhance them and filter out any artifacts that remained.
+
+\paragraph*{Algorithm:}\mbox{}\par
+
+\begin{algorithm}
+    \caption{Band-pass Filtering}\label{alg:frequency-filtering}
+    \begin{algorithmic}[1]
+        \Require $img$
+
+        \State $f\_rep \gets FFT(img)$
+        \State $f\_rep \gets bandpass\_filter(f\_rep, low, high)$
+        \State $img \gets IFFT(f\_rep)$
+
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{figure}
+    \centering
+    \includegraphics[height=0.2\linewidth]{img/algos/image-freq-domain-example.png}
+    \caption{Frequency domain representation}
+    \label{fig:example-img-freq-domain}
+\end{figure}
+
+Any analog signal is composed from multiple signals of different frequencies. These frequencies could be extracted using Fourier Transform [TODO: cite] or reconstruct the signal using its inverse. Because it is a computationally expensive algorithm, in practice Fast Fourier Transform [TODO: cite] is used because it usually gives acceptable results.
+
+This step can be described by Algorithm \ref{alg:frequency-filtering}. But firstly, it must be made clear what passing an image into the frequency domain means. The easiest is to take a one dimensional example (a line) and then generalize for a two dimensional case (an image).
+
+On the line, each pixel value could be considered to represent the amplitude of a signal. The signal progresses in time to one direction of the line. This signal can be decomposed in its core frequencies, to the left the low ones and the high ones to the right. The same thinking could be also applied to a 2D image, just that we get a 2D frequency image with real and imaginary components. For example, Figure \ref{fig:example-img-freq-domain} represents what happens if we have only a frequency present, what the resulting image would look like. The distance from the corner represents the frequency, while the position of the dot is the angle the bands will appear after applying the Inverse Fourier Transform.
+
+To be easier to visualize the frequencies, the image is usually shifted so that the 0 frequency is in the middle of the image rather than in the corners like in Figure \ref{fig:freq-domain-original}. This is useful also because it makes it easier to apply a band-pass filter. To apply this, we just have to blackout the middle of the image and the outer parts. In the end we are left with a disk shaped frequency representation of the image (Figure \ref{fig:freq-domain-filtered}). Experimentally I got usable results by keeping a disk with the small radius 14\% and the big radius 36\% of the found frequencies in the image.
+
+After applying the Inverse Fast Fourier Transform, we can observe that the low (the background) and the high (the noise) frequencies were removed. I successfully removed the background and the noise and still remained with the general letter outline in the image as can be seen in Figure [TODO: la fel ca cel de la results].
+
+The huge benefit of this method is that it can be applied to more images using the same band-pass filter, without changing the cutoffs.
+
+\begin{figure}
+        \centering
+        \begin{minipage}[c]{0.4\linewidth}
+        \centering
+        \includegraphics[height=0.4\linewidth]{img/algos/freq-domain_original.JPG}
+        \caption{Frequency domain}
+        \label{fig:freq-domain-original}
+    \end{minipage}
+    \begin{minipage}[c]{0.4\linewidth}
+        \centering
+        \includegraphics[height=0.4\linewidth]{img/algos/freq-domain_filtered.JPG}
+        \caption{Frequency domain}
+        \label{fig:freq-domain-filtered}
+    \end{minipage}
+\end{figure}
+
+\paragraph*{Results:}\mbox{}\par
+Outputs an image like in Figure [TODO:], where letter shapes could be observed. There are also artifacts remaining that will be dealt with at a later stage.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% b) Morphological Operation                           %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Black Hat Morphological Operation}
+\label{subsubsec:bh-morpho-op}
+
+\paragraph*{Accomplishes:}\mbox{}\par
+Enhances the darker regions representing the letter contours that are surrounded by brighter regions.
+
+\paragraph*{Reasoning:}\mbox{}\par
+It can be seen that in the resulted image at the previous step (Figure [TODO: ca mai sus]), the letters have an outline in dark pixels surrounded by bright regions. It can be more clearly seen in Figure [TODO: zoom pe litera]. By extracting this outline of the letters, we will be able to have the letters more prominent in the image than other features.
+
+\paragraph*{Algorithm:}\mbox{}\par
+A morphological operation is based on mathematical morphology \cite{article:mathematical-morphology}. The main components to it are an object $A$ (our image) and a structuring element $B$. Normally, these operations are applied on binary images but variations exist that let them to be used also on gray-scale ones. Firstly, a path must be created for our structuring element ($B$) to traverse the edge of the object ($A$). This path if formally defined as a function that maps points from our image to a real line.
+\[f:E \rightarrow R\]
+The Black Hat Morphological operation is defined mathematicaly as:
+\[T_b(f) = f \bullet b - f\]
+where $b$ is a structuring element and $\bullet$ means the closing operation that is defined as a dilation followed by an erosion of a set $A$ by a structuring element $B$:
+\[A \bullet B = (A \oplus B) \ominus B\]
+
+\paragraph*{Results:}\mbox{}\par
+The result of this step can be seen in Figure [TODO:]. The figure has the brightness increased for viewing, but even if it's a darker image, it would not be a problem for a thresholding algorithm that can select his own threshold. This is why, in the next step we apply OTSU thresholding.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% c) OTSU Binarization                                 %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{OTSU Binarization}
+\label{subsubsec:OTSU-binarization}
+
+\paragraph*{Accomplishes:}\mbox{}\par
+
+\paragraph*{Reasoning:}\mbox{}\par
+
+\paragraph*{Algorithm:}\mbox{}\par
+
+\paragraph*{Results:}\mbox{}\par
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Filtering for Text}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Voting}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Text Recognition}\label{sec:text-recognition}
 
 
