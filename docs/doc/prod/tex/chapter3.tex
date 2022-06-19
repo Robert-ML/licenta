@@ -50,7 +50,7 @@ A deviation from this standard equalization is Adaptive Histogram Equalization (
 
         \Ensure $k \mid X$
 
-        \State $S \gets $ ($img$ split into $k\times k$ cells)
+        \State $S \gets $ ($img$ split into $k\times k$ cells)\label{line:CLAHE:split}
 
         \For {$s$ in $S$}
             \State $H_s \gets histogram(s)$
@@ -72,7 +72,7 @@ A deviation from this standard equalization is Adaptive Histogram Equalization (
             %     \EndIf
             % \EndFor
 
-            \State $H_{res} \gets redistribute(H_{res}, N_{remain})$
+            \State $H_{res} \gets redistribute(H_{res}, N_{remain})$\label{line:CLAHE:redistribute}
             % \While {$N_{remain} > 0$}
             %     \State $step \gets N_{gray} \div N_{remain}$
             %     \For {$i=0:step:N_{gray}$}
@@ -93,7 +93,7 @@ A deviation from this standard equalization is Adaptive Histogram Equalization (
 
 CLAHE is described in pseudo-code in Algorithm \ref{alg:CLAHE} in accordance to the implementation found in \cite{site:CLAHE_code} and the explanation in the paper \cite{article:CLAHE_explanation}.
 
-On $line 1$ we split the image in multiple cells of size $k$ by $k$ because CLAHE is an adaptive algorithm.
+On line \ref{line:CLAHE:split} we split the image in multiple cells of size $k$ by $k$ because CLAHE is an adaptive algorithm.
 Then, for each of the cells we calculate their histogram to find out how many different pixel values they contain ($N_{gray}$). To perform the clipping, we need to calculate a few things:
 
 $N_{avg} \gets (k \times k) \div N_{gray}$, that is the number of pixels in the cell divided by how many pixel values are present in the cell;
@@ -115,7 +115,7 @@ Then, we iterate through all the pixel values in the histogram and create a new 
 
 % TODO: figure source https://en.wikipedia.org/wiki/Adaptive_histogram_equalization
 
-The limit we excede with will be redistributed after this on $line 5$. Here, we go through the pixel values in the histogram again and at a simmilary random step we add one more pixel to the count that overflowed earlyer. The step is computed by the formula: $step \gets N_{gray} \div N_{remain}$.
+The limit we excede with will be redistributed after this on line \ref{line:CLAHE:redistribute}. Here, we go through the pixel values in the histogram again and at a simmilary random step we add one more pixel to the count that overflowed earlyer. The step is computed by the formula: $step \gets N_{gray} \div N_{remain}$.
 
 Before starting to compute the next cell, we adjust the current one acoording to the new histogram we just computed: $H_{res}$.
 
@@ -148,13 +148,14 @@ The reasoning for why we want to detect the tire in the image is twofold. Firstl
         \State $gray \gets color2gray(blur)$
         \State $edges \gets canny(gray, canny\_params)$
 
-        \For{$r=r_{min}:+1:r_{max}$}
+        \For{$r=r_{min}:+1:r_{max}$}\label{line:Hough_Circles:for_r}
             \State $acc[i] \gets matrix(shape(img) \div dp)$
-            \For{each pixel $p > 0$ in $edges$}
+            \For{each pixel $p > 0$ in $edges$}\label{line:Hough_Circles:for_p}
                 \State $acc[i] \gets accumulate(acc[i], p, r)$
             \EndFor
         \EndFor
-    \State $center, radius \gets extract(acc)$
+    \State $center, radius \gets extract(acc)$\label{line:Hough_Circles:extract}
+    \State \Return $(center, radius)$
     \end{algorithmic}
 \end{algorithm}
 
@@ -164,13 +165,13 @@ The first 2 steps in the algorithm are to apply Gaussian Blur \cite{site:Gaussia
 
 Then it uses Canny Edge Detector \cite{site:Canny_edge_detection} to obtain a new image that contains only the outlines where the algorithm considered a boundary between 2 objects exists. An example can be seen in Figure \ref{fig:canny_output_tire}, where each white pixel represents an edge.
 
-On line $4$, it can be seen the $loop$ that will probe for the radius interval that was requested.
+On line \ref{line:Hough_Circles:for_r}, it can be seen the $loop$ that will probe for the radius interval that was requested.
 
 For each radius that the algorithm will probe, will create an accumulator matrix that is $dp$ times smaller than the original image. The purpose of this matrix will be explained shortly.
 
-The central part of the algorithm is the for loop on line $6$. It goes through all the pixels that resulted in being edges and finds their corresponding position in the smaller $acc[i]$ matrix. Then, all around that point in the accumulator matrix at distance $r$, it increments the corresponding cell. 3 iterations of this can be seen in in Figure \ref{fig:Hough_circle_accumulator}.
+The central part of the algorithm is the for loop on line \ref{line:Hough_Circles:for_p}. It goes through all the pixels that resulted in being edges and finds their corresponding position in the smaller $acc[i]$ matrix. Then, all around that point in the accumulator matrix at distance $r$, it increments the corresponding cell. 3 iterations of this can be seen in in Figure \ref{fig:Hough_circle_accumulator}.
 
-Because the core algorithm probes for a specific radius, multiple accumulator matrices are used. So, the last step of the algorithm (line $10$) is to parse all the accumulators and find the most incremented cell (the red dot in Figure \ref{fig:Hough_circle_accumulator}). That cell is considered the center of the circle and the radius is corresponding to the accumulator matrix it was found in.
+Because the core algorithm probes for a specific radius, multiple accumulator matrices are used. So, the last step of the algorithm (line \ref{line:Hough_Circles:extract}) is to parse all the accumulators and find the most incremented cell (the red dot in Figure \ref{fig:Hough_circle_accumulator}). That cell is considered the center of the circle and the radius is corresponding to the accumulator matrix it was found in.
 
 \begin{figure}
     \centering
@@ -376,12 +377,35 @@ The result of this step can be seen in Figure [TODO:]. The figure has the bright
 \label{subsubsec:OTSU-binarization}
 
 \paragraph*{Accomplishes:}\mbox{}\par
+Computes automatically a threshold for the image and applies it, outputting a binary image. Because of the processing previously done, the output consists of tire-markings and some artifacts.
 
 \paragraph*{Reasoning:}\mbox{}\par
+When trying different methods to make the regions of interest (the tire-markings) remain in the image and remove the parts I am not interested in, OTSU binarization happened to do just that. Before the voting could begin, I anyway would have had to binarize the image so this is even more helpful. The fact that OTSU computes automatically its threshold is also very helpful as it prevents the need to experimentally fine tune the algorithm and perform overfitting. The output would have some artifacts that I removed as much as possible through a set of heuristics later.
 
 \paragraph*{Algorithm:}\mbox{}\par
+The novalty in the OTSU Thresholding (Algorithm \ref{alg:OTSU-thresholding}) is that it computes the threshold by minimizing the intra-class variance (the variance between the white and black pixels that would result).
+
+For each possible threshold value computes the binary image. After which the algorithm computes on the respective image the variance in white and black pixels and returns the weighted variance of the two. This can be seen on line \ref{line:OTSU:variance-calculation} of the algorithm. We store the resulting image with the threshold and the weighted variance in 2 vectors ($I$ and $WV$) that are self incrementing.
+
+As a last step (line \ref{line:OTSU:threshold-selection}) we select the threshold that minimizes the weighted variance and retuns the corresponding computed binary image with its corresponding threshold.
+
+\begin{algorithm}
+    \caption{OTSU Thresholding}\label{alg:OTSU-thresholding}
+    \begin{algorithmic}[1]
+        \Require $img$
+
+        \For{$t$ in possible thresholds}
+            \State $img_{bin} \gets threshold(img, t)$
+            \State $I[i] \gets (img_{bin}, t)$
+            \State $WV[i] \gets weighted_varianve(img_{bin})$\label{line:OTSU:variance-calculation}
+        \EndFor
+        \State $it \gets pos\_of\_min(WV)$\label{line:OTSU:threshold-selection}
+        \State \Return $I[it]$
+    \end{algorithmic}
+\end{algorithm}
 
 \paragraph*{Results:}\mbox{}\par
+It can be seen in Figure [TODO:] that the letters or text remains almost as a connected component while the artifacts span across the entire segment or are small dots. This is very helpful as we can filter for the components that have a certain size and shape.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Filtering for Text}
