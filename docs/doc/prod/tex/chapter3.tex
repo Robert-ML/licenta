@@ -46,7 +46,7 @@ A deviation from this standard equalization is Adaptive Histogram Equalization (
 \begin{algorithm}[h]
     \caption{CLAHE}\label{alg:CLAHE}
     \begin{algorithmic}[1]
-        \Require $img$ be a $X\times X$ matrix; $cl \epsilon [0, 1]$; $k$
+        \Require $img$ be a $X\times X$ matrix; $cl \in [0, 1]$; $k$
 
         \Ensure $k \mid X$
 
@@ -362,7 +362,7 @@ It can be seen that in the resulted image at the previous step (Figure [TODO: ca
 \paragraph*{Algorithm:}\mbox{}\par
 A morphological operation is based on mathematical morphology \cite{article:mathematical-morphology}. The main components to it are an object $A$ (our image) and a structuring element $B$. Normally, these operations are applied on binary images but variations exist that let them to be used also on gray-scale ones. Firstly, a path must be created for our structuring element ($B$) to traverse the edge of the object ($A$). This path if formally defined as a function that maps points from our image to a real line.
 \[f:E \rightarrow R\]
-The Black Hat Morphological operation is defined mathematicaly as:
+The Black Hat Morphological operation is defined mathematically as:
 \[T_b(f) = f \bullet b - f\]
 where $b$ is a structuring element and $\bullet$ means the closing operation that is defined as a dilation followed by an erosion of a set $A$ by a structuring element $B$:
 \[A \bullet B = (A \oplus B) \ominus B\]
@@ -408,10 +408,93 @@ As a last step (line \ref{line:OTSU:threshold-selection}) we select the threshol
 It can be seen in Figure [TODO:] that the letters or text remains almost as a connected component while the artifacts span across the entire segment or are small dots. This is very helpful as we can filter for the components that have a certain size and shape.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Filtering for Text}
+\subsection{Filtering Artifacts}
+
+\paragraph*{Accomplishes:}\mbox{}\par
+The artifacts that can be seen in Figure [TODO: cea de mai sus] are removed as much as possible, while retaining the letters' shapes in the binary map. This process is a combination of heuristics and morphological operations.
+
+\paragraph*{Reasoning:}\mbox{}\par
+Because the output of this step will be used in voting the regions of interest the text recognition will take place on, we would like to discard as many artifacts as possible. A big majority of them can be identified and removed because of their shape and size. The regions of text we are interested in are elongated and not very tall, while the letters have a common supple shape.
+
+\paragraph*{Algorithm:}\mbox{}\par
+
+\begin{algorithm}
+    \caption{Filtering Artifacts}\label{alg:filtering-artifacts}
+    \begin{algorithmic}[1]
+        \Require $img$
+
+        \State $img \gets dilate(img, se, 1)$
+        \State $CCs \gets contours(img)$\label{alg:filtering-artifacts:contours-1}
+        \State $img \gets filter(img, CCs, heu_1)$\label{alg:filtering-artifacts:filter-1}
+        \State $img \gets dilate(img, se, 4)$
+        \State $CCs \gets contours(img)$
+        \State $img \gets filter(img, CCs, heu_2)$\label{alg:filtering-artifacts:filter-2}
+
+        \State \Return $img$
+    \end{algorithmic}
+\end{algorithm}
+
+The pseudo-code for the filtering process can be seen in Algorithm \ref{alg:filtering-artifacts}.
+
+It starts off with a dilation, which is a morphological operation \cite{article:mathematical-morphology} which results in the thickening of the white connected components. It can be described mathematically as:
+
+\[A \oplus B = \{z \in E | (B^s)_z \cap A \neq \emptyset \} \]
+where $A$ is our image with sets in it, $B$ is a structuring element that is applied across the entirety of $A$ and $B^s$ is the symmetric of $B$. This is used in order to unite any artifacts and letter parts that might be disconnected because of the initial lighting conditions. For now I apply a single iteration.
+
+The operation on line \ref{alg:filtering-artifacts:contours-1} looks in the image and finds all the connected components ($CCs$).
+
+Then on line \ref{alg:filtering-artifacts:filter-1} we apply the first series of heuristics. These were determined experimentally and through the observation of the sizes of letters. On each component, a bounding box is placed. Any of the following rules ($heu_1$\label{filtering:heuristics-1}) would force the component to be discarded: $h < 10p \;|\; w < 10p$ (even if this was a letter, it would be too small to be recognizable), $h/w > 1.5 \;|\; h/w < 0.33$ or $h > 0.33*h_{seg} \;\&\; w > 0.66*w_{seg}$. ($h$ - height of the component, $w$ - width of the component, $h_{seg}$ - height of the segment, $w_{seg}$ - width of the segment).
+
+After this first series of filtering noise, I've decided to apply again dilation operation but for 4 iterations in order to thicken up the remaining sets. I do not want necessarily to close the spaces between them, as I would have chosen to use the closing morphological operation if I wanted that.
+
+I search again for the connected components ($CCs$) in the image as they might have changed quite drastically from the last time.
+
+And now, as a last step (line \ref{alg:filtering-artifacts:filter-2}), I apply another filtration with other rules. In my experiments, I observed that some more artifacts could be eliminated at this step so I chose to do just that. The rules for removing these artifacts ($heu_2$\label{filtering:heuristics-2}) are:  $h < 26p \;|\; w < 10p$ (even if this was a letter, it would be too small to be recognizable), $h/w > 1.5 \;|\; h/w < 0.33$ or $h > 0.33*h_{seg} \;\&\; w > 0.66*w_{seg}$. Practically, almost the same rules as in the first round of filtration, just that now the height of the component must be bigger as we have applied dilation a few times already.
+
+\paragraph*{Results:}\mbox{}\par
+Even if the filtering process gives some false negatives and lets some artifacts to pass, it would be way worse to have false positives and start removing from the tire-markings themselves. I am satisfied with the results that can be seen in Figure [TODO: poate aici sa lipesc mai multe poze ca sa arate pe mai multe cazuri]. This bitmap will be used for voting in the accumulator that has the same size with the unwrapped image.
+
+Finding connected components is a quite expensive operation, so further improvement could be done on this step in order to reduce the number of searches for connected components to speed up the pipeline.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Voting}
+
+Now that the segment was processed (revealed the zone where text is present and removed as much as possible of the artifacts present in the image), the white zones that remained will have their corresponding place in the accumulator matrix (that is the same size with the unwrapped image) increased by one. This is the action that I called voting. Because of the overlap between segments this voting step can be used to further reduce the number of false positive regions of interest.
+
+After all the segments were processed, it results a voting map like the one in Figure [TODO: sa i fac enhance ca sa fie mai vizibila pe foaie] (it was enhanced to be more visible), where the brighter the region, the more votes it got. But this voting accumulator can be further processed in order to reduce the zones that will remain as regions of interest for the text recognition part of the pipeline.
+
+The filtration could be described by the pseudo-code in Algorithm \ref{alg:voting-filtering}. I start off with a threshold operation, where I discard any region that did not get at least 3 votes. This step is done to reduce the artifacts that appeared only in some segments. The thresholding operation also makes the pixels that passed the check to have the maximum value, resulting in the accumulator becoming a binary image.
+
+\begin{algorithm}
+    \caption{Cleaning Accumulator Matrix}\label{alg:voting-filtering}
+    \begin{algorithmic}[1]
+        \Require $acc$
+
+        \State $acc \gets threshold(acc, 3)$
+        \State $CCs \gets contours(acc)$\label{alg:voting-filtering:contours-1}
+        \State $acc \gets filter(acc, CCs, heu_3)$\label{alg:voting-filtering:filter-1}
+        \State $acc \gets dilate(acc, se, 4)$
+        \State $CCs \gets contours(acc)$
+        \State $acc \gets filter(acc, CCs, heu_4)$
+
+        \State \Return $acc$
+    \end{algorithmic}
+\end{algorithm}
+
+Then, on line \ref{alg:voting-filtering:filter-1} I am filtering through the connected components found in the accumulator matrix (the operation on line \ref{alg:voting-filtering:contours-1}). The component is discarded if its bounding box has $h < 40p \;|\; w < 10p$ ($heu_3$\label{filtering:heuristics-3}) as it would be too small to be even a letter. At this step the height limit was increased compared to heuristic \hyperref[filtering:heuristics-2]{$hre_2$} because the components that are voted by multiple segments tend to thicken up. This might be because of the frequency filtering leaves different aspects of a feature (tire-marking or artifact) visible as it is very dependable on the content of the segment.
+
+On the filtered accumulator matrix, 4 iterations of the morphological operation dilation were applied to connect the letters. Other artifacts that are still present would not connect with anything else if they are far away enough from other connected components.
+
+Now, on the newly diluted accumulator matrix and the new connected components, we apply another filtration using the heuristics $heu_4$\label{filtering:heuristics-4} that consist of: heuristic \hyperref[filtering:heuristics-3]{$hre_3$}, $h > 200p$ (the text region is too tall so it is a region that we are not interested in) or $h > 100p \;\&\; h/w > 0.85$ (a region too tall that doesn't have a prominent enough shape).
+
+The result of this step is a bitmap that when applied over the wrapped tire shows regions of text (Figure \ref{fig:text-regions-on-unwrapped-tire}). This bitmap will be used in the text recognition step to indicate the regions of interest in the image and reduce the space on wich the algorithm will run on.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=15.9cm]{img/algos/text-regions-on-unwrapped-tire.JPG}
+    \caption{Text Regions on Unwrapped Tire}
+    \label{fig:text-regions-on-unwrapped-tire}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
