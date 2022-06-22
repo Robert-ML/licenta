@@ -1,11 +1,7 @@
 \chapter{The Proposed Solution}\pagestyle{fancy}\setlength{\parindent}{3em}
 \label{chap:proposed-solution}
 
-The solution is an image processing pipeline that would extract from the side picture of a tire the specifications written on it. These specifications are present in the form of embossed letters on the tire's exterior walls.
-
-The system's input data are photos taken with a Cannon EOS 1300D that has a resolution of 5184 by 3456 pixels and a lens (TODO: specificatiile lentilei). While taking the pictures, the distance from the lens to the tire's side was approximately (TODO: distanta aproximativa pana la cauciuc cand fac poze). While capturing the images, I was careful to catch the entire wheel in the image because detecting half wheels or arcs would have proven difficult. One more adjustment I did was the camera placement in regards to the wheel's axle. I decided to be approximately in line with it in order for the wheel to appear circular in the image. If I wouldn't have done so, the tire would have had an oval shape. By controlling the distance between the camera and the wheel, as  well as the camera position in regards to the wheel's axle, I consider I will be able to detect the tire in the image more reliably. Before feeding the images to the processing pipeline, they are made square by cropping them to 3456 pixels and keeping the middle.
-
-By desiring to not have a complex setup and not require supplementary light sources, the images were taken using the ambient light. This proved to increase the problem's difficulty quite considerably when it came to detecting the regions of text, because the contrast between the embossed letters and the background image got even smaller. Multiple approaches were considered in TODO section 3.2 Text Detection and in the end one proved fruitful in delivering acceptable results.
+The solution is an image processing pipeline that would extract from the side picture of a tire the markings written on it. These are present in the form of embossed letters on the tire's exterior walls. By desiring to not have a complex setup and not require supplementary light sources, the system was tested on images taken only with ambient light. This proved to increase the problem's difficulty quite considerably when it came to detecting the regions of text, because the contrast between the embossed letters and the background image got even smaller. Multiple approaches were considered in section \ref{sec:text-detection} Text Detection and in the end one proved fruitful in delivering acceptable results.
 
 The system's steps are described in the following sections:
 
@@ -21,9 +17,9 @@ To better explain how this was accomplished, this step was split in multiple sub
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Circle Detection}
 
-I detect where in the image are the circles representing the outer and inner borders of the tire and get their center’s coordinates. The two detected circles might not have a common center because of the imperfections in taking the images, but I account and try to correct for that through a series of heuristics.
+I detect where in the image are the circles representing the outer and inner borders of the tire and get their center's coordinates. The two detected circles might not have a common center because of the imperfections in taking the images, but I account and try to correct for that through a series of heuristics.
 
-Because this is the beginning of the pipeline, I introduced a step to \hyperref[subsubsec:equalization]{equalization} the images and have some independence from the lighting conditions. Then I detected the first circles in the image using TODO: \hyperref[subsubsec:hough_circles_transform]{Hough Circle Transform} and filtered its output through a series of \hyperref[subsubsec:circ_det_heuristics]{heuristics}.
+Because this is the beginning of the pipeline, I introduced a step to \hyperref[subsubsec:equalization]{equalization} the images and have some independence from the lighting conditions. Then I detected the first circles in the image using \hyperref[subsubsec:hough_circles_transform]{Hough Circle Transform} and filtered its output through a series of \hyperref[subsubsec:circ_det_heuristics]{heuristics}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% a) EQUALIZATION                                      %%%
@@ -43,7 +39,7 @@ A deviation from this standard equalization is Adaptive Histogram Equalization (
 
 \paragraph*{Algorithm:}\mbox{}\par
 
-\begin{algorithm}[h]
+\begin{algorithm}
     \caption{CLAHE}\label{alg:CLAHE}
     \begin{algorithmic}[1]
         \Require $img$ be a $X\times X$ matrix; $cl \in [0, 1]$; $k$
@@ -210,7 +206,7 @@ Because tires have different dimensions and an outer and inner rim, I have to se
 Reduces the number of detected circles in the previous step and remains only with 2 concentric circles representing the tire's inner and outer rims. If his step fails to remain with only 2 circles, then the image is discarded.
 
 \paragraph*{Reasoning:}\mbox{}\par
-There are many types of tires in the wild with different shapes and sizes, it was better in the previous step to detect more circles in the image than to look for only 2 circles. When looking only for 2 circles using the Hough Circular Transform, the car's wheel arc can be falsely detected as a circle. Or the wheel cap can have a pattern on it that would falsely trick the circle detection algorithm to say that the 2 most prominent circles are on the cap. Because of this reason, I preferred to detect many false positives and at this stage filter through them and remain with only the mot concentric circles that have at least a certain radius difference.
+There are many types of tires in the wild with different shapes and sizes, so it was better in the previous step to detect more circles in the image than to look for only 2 circles. When looking only for 2 circles using the Hough Circular Transform, the car's wheel arc can be falsely detected as a circle or the wheel cap can have a pattern on it that would falsely trick the circle detection algorithm. Because of this reason, I preferred to detect many false positives and at this stage filter through them and remain with only the mot concentric circles that have at least a certain radius difference. Another possible problem would be that the tire is not a perfect circle because of the contact point with the ground or because when taking the image, the camera sensor was not in line with the wheel's axle.
 
 \paragraph*{Algorithm:}\mbox{}\par
 The first heuristic I apply is to reduce the circles that are very similar one to another. I start from the most prominent circle found by the previous step. If the conditions $dist(c_1, c_2) < 0.5 \times size(img)$ and $\Big|r_1 - r_2\Big| < 0.37 * size(img)$ are found true, that means the circles are probably the same one and I calculate a mean one. The mean is calculated by taking the average of the centers and the average of the radii. In checking other circles, thisone will be used. The values for the thresholds were found experimentally.
@@ -501,6 +497,21 @@ The result of this step is a bitmap that when applied over the wrapped tire show
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Text Recognition}\label{sec:text-recognition}
 
+\paragraph*{Accomplishes:}\mbox{}\par
+
+Now that we have reduced our unwrapped image to a few regions of interest, we can use an OCR to start extracting the text. This will be the output of our system and it will define our performance.
+
+\paragraph*{Reasoning:}\mbox{}\par
+
+It could be considered that the reason is stated in the \hyperref[sec:motivation]{Motivation} section of this work, but to reiterate, we want to extract the serial DOT code and the E-mark certification in order to almost uniquely identify a tire. I chose to use an OCR for this step because they are the most common approach to text recognition and the availability of ready made solutions only increased in the past years \cite{site:OCR_comparison}. There is also a wide variety to the OCR solutions that are offered as services, accessible through APIs.
+
+\paragraph*{Algorithm:}\mbox{}\par
+The OCR I used is a service from Microsoft Cognitive Solutions \cite{site:Microsoft_Cognitive_Services} and it uses "deep-learning-based models and works with text on a variety of surfaces and backgrounds" (source: \cite{site:Microsoft_Cognitive_Services-Explained}). So, it is not specially tailored to our case (tire images). This is a good thing as it provides versatility at the expense of performance and openness of the system.
+
+The Read API (that is the OCR's name) \cite{site:Microsoft_Cognitive_Services-Read_API-OCR} is accessed through API calls to a configured endpoint. For each region of interest extracted in the Text Detection \ref{sec:text-detection} section, a request is sent to the endpoint which returns its guess on the text in the image. While not being able to perform all the processing on only one local machine (as we had to rely on the computation power and OCR solution hosted on a remote server), the impact this has on performance is reduced because we submit only the regions of interest (which have a smaller size than the original unwrapped tire image).
+
+\paragraph*{Results:}\mbox{}\par
+The results from this step are in the form of annotations that are coupled with the original detected region of interest. The recognized text returned by the OCR will be categorized in the following categories: DOT serial code, E-Mark certification and miscellaneous.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% x) TEMPLATE                                          %%%
