@@ -1,0 +1,36 @@
+\chapter{Evaluation}\pagestyle{fancy}\setlength{\parindent}{3em}
+\label{chapter:evaluation}
+
+As I developed a processing pipeline to extract the tire-markings off images of tires, I needed a dataset. To build this dataset I took photos with a Cannon EOS 1300D that has a resolution of 5184 by 3456 pixels. The lens used is EF-S 18-55mm Canon Zoom which has diameter of 58mm. When taking pictures I used a focal length of 23 millimeters and an aperture of $focal\_length \div 5.0$. In the process of building the dataset, the distance from the lens to the tire's side was approximately (TODO: distanta aproximativa pana la cauciuc cand fac poze).
+
+While capturing the images, I was careful to catch the entire wheel in the image because detecting half wheels or arcs would have proven difficult. One more adjustment I did was the camera placement in regards to the wheel's axle. I decided to be approximately in line with it in order for the wheel to appear circular in the image. If I wouldn't have done so, the tire would have had an oval shape which would not affect very much the unwrapping faze as it has some slack and it doesn't require the tire to be perfectly circular. Anyway, the outer rim of the tire doesn't have a circular shape because it is deformed at the contact point with the ground. The oval shape affects the unwrapped output like Figure (TODO: cauciuc care nu i perfect orizontal), compared to Figure (TODO: imagine cu un cauciuc unwrapped frumos).
+
+By controlling the distance between the camera and the wheel, as  well as the camera position in regards to the wheel's axle, I was be able to detect the tire in the image more reliably and ensured the letters composing the tire-markings had at least 20 pixels in height.
+
+When it comes to evaluating the running time, the system the algorithm is tested on contains an Intel i7-6700HQ CPU and 16GB of DDR4 RAM at 2133 Mega-transfers/s. The operating system is Ubuntu 20.04.4 LTS 64 bit with Linux Kernel 5.5.9-050509-generic. In measuring the time, I do not take into account the writing time to the storage media.
+
+There are three main points in which the pipeline can be evaluated and they coincide with its steps. The first is the percentage of the dataset in which the tire could be identified and unwrapped. The second is the percentage of codes found in average on a tire and the average quantity of false positives in the regions of interest extracted. The third is the performance of the OCR in correctly recognizing the regions of interest.
+
+\section{Evaluating the Tire Unwrapping}\label{section:evaluation-tire_unwrapping}
+
+I can measure what percentage of the input images my algorithm is able to unwrap successfully. This is partially automated and partially manual. My algorithm tries to obtain the circles approximately matching to the outer and inner rims of the tire. If more circles are detected and the algorithm is not able to reduce their number to only two or not even 2 are found, the respective image will be discarded automatically. The manual part is to pass through each successfully unwrapped image and check if the wheel's center was correctly detected. If not, I will discard the image before proceeding to the next phase.
+
+Another metric that I can extract is the average time this step takes to run on the testing machine. The IO operations with the storage media is not taken into account. The time is measured in seconds.
+
+TODO: sa introduc rezultatele evaluarii.
+
+\section{Evaluating the Text Detection}\label{section:evaluation-text_detection}
+
+Here the main metric will be the percentage of images the algorithm is able to correctly identify the regions of interest. I am interested in the DOT code and the E-mark certification number, any other markings being a bonus. If any detected region is incomplete (has only part of the marking) I will still consider it as a correct detection. Another metric will be how many false positives are given by the algorithm in this step and the running time.
+
+TODO: plot the results. (pot face chestia aia cu patratul cu distributia si sa bag si tabel)
+
+\section{Evaluating the Text Recognition}\label{section:evaluation-ocr}
+
+When it comes to evaluating the OCR, I will use the Character Error Rate (CER) \cite{site:evaluation-OCR-character_error_rate} metric. This will show the performance of the algorithm in recognizing the letters out of the good regions of interest. I will hand pick the true positive images containing text and discard the false positives detected at the \ref{sec:text-detection} Text Detection section step because I have limited a limited number of credits to try out the OCR (called Read API) from Microsoft Cognitive Services \cite{site:Microsoft_Cognitive_Services}.
+
+TODO: Evaluate and talk about the results in comparison with the state of the art
+
+\section{Overall Evaluation}\label{section:evaluation-overall}
+
+TODO: (sau poate scot partea asta?)
