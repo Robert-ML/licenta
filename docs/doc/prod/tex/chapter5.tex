@@ -29,6 +29,8 @@ TODO: plot the results. (pot face chestia aia cu patratul cu distributia si sa b
 
 When it comes to evaluating the OCR, I will use the Character Error Rate (CER) \cite{site:evaluation-OCR-character_error_rate} metric. This will show the performance of the algorithm in recognizing the letters out of the good regions of interest. I will hand pick the true positive images containing text and discard the false positives detected at the \ref{sec:text-detection} Text Detection section step because I have limited a limited number of credits to try out the OCR (called Read API) from Microsoft Cognitive Services \cite{site:Microsoft_Cognitive_Services}.
 
+Measuring the running time is not a precise task as the OCR is a web service and it would depend on the network congestion and the service's load at the time. Anyhow, I still measured the time it takes from the submission of the request to the response.
+
 TODO: Evaluate and talk about the results in comparison with the state of the art
 
 \section{Overall Evaluation}\label{section:evaluation-overall}
