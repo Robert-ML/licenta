@@ -218,6 +218,7 @@ The resulted concentric circles are an approximation of what the true circle mig
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Convert to Polar Coordinates}
+\label{subsec:convert_to_polar}
 
 \paragraph*{Accomplishes:}\mbox{}\par
 This step unwraps the tire and outputs it as a continuous horizontal strip as can be seen in Figure [TODO]. This can be done because we have detected the supposed center of the tire and its radius.
@@ -259,6 +260,7 @@ Before resorting to Machine Learning models to solve this step (a thing that I a
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Segmentation}
+\label{subsec:segmentation}
 
 \paragraph*{Accomplishes:}\mbox{}\par
 Splits the image in smaller cells in order to perform operations on each one of them. These cells are overlapped a certain percentage to be able to vote on them regions of interest.
@@ -335,7 +337,7 @@ The huge benefit of this method is that it can be applied to more images using t
     \begin{minipage}[c]{0.4\linewidth}
         \centering
         \includegraphics[height=0.4\linewidth]{img/algos/freq-domain_filtered.JPG}
-        \caption{Frequency domain}
+        \caption{Filtered frequency domain}
         \label{fig:freq-domain-filtered}
     \end{minipage}
 \end{figure}
@@ -367,16 +369,16 @@ where $b$ is a structuring element and $\bullet$ means the closing operation tha
 The result of this step can be seen in Figure [TODO:]. The figure has the brightness increased for viewing, but even if it's a darker image, it would not be a problem for a thresholding algorithm that can select his own threshold. This is why, in the next step we apply OTSU thresholding.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%% c) OTSU Binarization                                 %%%
+%%% c) OTSU Thresholding                                 %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsubsection{OTSU Binarization}
+\subsubsection{OTSU Thresholding}
 \label{subsubsec:OTSU-binarization}
 
 \paragraph*{Accomplishes:}\mbox{}\par
 Computes automatically a threshold for the image and applies it, outputting a binary image. Because of the processing previously done, the output consists of tire-markings and some artifacts.
 
 \paragraph*{Reasoning:}\mbox{}\par
-When trying different methods to make the regions of interest (the tire-markings) remain in the image and remove the parts I am not interested in, OTSU binarization happened to do just that. Before the voting could begin, I anyway would have had to binarize the image so this is even more helpful. The fact that OTSU computes automatically its threshold is also very helpful as it prevents the need to experimentally fine tune the algorithm and perform overfitting. The output would have some artifacts that I removed as much as possible through a set of heuristics later.
+When trying different methods to make the regions of interest (the tire-markings) remain in the image and remove the parts I am not interested in, OTSU Thresholding happened to do just that. Before the voting could begin, I anyway would have had to binarize the image so this is even more helpful. The fact that OTSU computes automatically its threshold is also very helpful as it prevents the need to experimentally fine tune the algorithm and perform overfitting. The output would have some artifacts that I removed as much as possible through a set of heuristics later.
 
 \paragraph*{Algorithm:}\mbox{}\par
 The novalty in the OTSU Thresholding (Algorithm \ref{alg:OTSU-thresholding}) is that it computes the threshold by minimizing the intra-class variance (the variance between the white and black pixels that would result).

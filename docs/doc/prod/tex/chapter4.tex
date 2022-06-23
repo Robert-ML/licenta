@@ -1,2 +1,195 @@
 \chapter{Implementation Details}\pagestyle{fancy}\setlength{\parindent}{3em}
 \label{chap:implementation-details}
+
+This chapter will provide the details of the implementation in regards of the developing environment and libraries used. I chose to develop the pipeline in python3 \cite{site:python-about-page} as it provides easy access to the OpenCV \cite{site:OpenCV-about-page} library and a relaxed programming (because it is dynamically typed). The performance hit is minimal as the computationally intensive algorithms used are implemented in C/C++ and python is used only for interfacing and managing the flow of data. The project could just as well be developed in C++ using the OpenCV library. Another library that I used is numpy that provides the ability to perform matrix operations efficiently.
+
+The developing environment was Jupiter Notebooks \cite{site:jupyter_notebooks-about-page} as it provides easy code modularization and the possibility to test only certain sections, without having to rerun the entire pipeline.
+
+Now, I will mention for each step described in The Proposed Solution \ref{chap:proposed-solution} chapter its implementation if it contained an important algorithm. While the algorithms used were part of the OpenCV library, the interfacing of their outputs and the flow of data was of my own doing. I designed the pipeline that makes use of these algorithms.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% a) CLAHE                                             %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{CLAHE}
+
+This algorithm is performing Clip Limited Adaptive Histogram Equalization (CLAHE) and is provided by the OpenCV library. It is used as can be seen in the code snippet \ref{code:clahe}.
+
+\begin{lstlisting}[language=Python, label=code:clahe, caption={CLAHE}]
+    clahe_obj = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    clahe_obj.apply(img_gray)
+\end{lstlisting}
+
+Firstly, it is needed to create a CLAHE object and provide to it the clipping limit and the tile grid size which will be used by the algorithm \ref{alg:CLAHE}. The clip limit is a double representing a percentage and the tile grid must be a tuple of two integers. The returned object is of type $cv::CLAHE$ and has a method called $apply$ which takes as input a gray-scale image and returns the processed image. The library has also the possibility to use the CUDA framework to run on the GPU the algorithm, but I did not use it as it would make the code not portable and complicate the setup. Anyhow, it is an interesting opportunity to study the speedup of the entire pipeline if some algorithms are run on the GPU.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% b) Hough Circles Transform                           %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Hough Circles Transform}
+
+In order to detect the circles in the equalized image, we employ the Hough Circles Transform \cite{site:circular_hough_transform} algorithm (that was described in \ref{alg:Hough_Circles}) from the OpenCV library. We probe for multiple ranges of radii and later we will reduce their number and combine them. In order to sped up the algorithm, we reduce the size of the image to a thumbnail of 300 by 300 pixels. The code snippet \ref{code:hough-circles} shows the usage of the provided algorithm.
+
+\begin{lstlisting}[language=Python, label=code:hough-circles, caption={Hough Circles Transform}]
+    C, R = cv2.HoughCircles(thumbnail, cv2.HOUGH_GRADIENT, 2, param1=140, param2=130, minDist=thumbnail.shape[0], minRadius=70, maxRadius=140)[0]
+    ret = [(C, R)]
+    for new_r in range(80, 130, 10):
+        nc, nr = cv2.HoughCircles(thumbnail, cv2.HOUGH_GRADIENT, 2, param1=140, param2=130, minDist=thumbnail.shape[0], minRadius=new_r - 5, maxRadius=new_r + 5)[0]
+        ret.append((nc, nr))
+\end{lstlisting}
+
+The Hough Circles function from OpenCV takes in many parameters as it also applies internally Canny Edge detection \cite{site:Canny_edge_detection}. The first parameter is the image (thumbnail) to be processed, the second is the algorithm to be used and the third is how many times smaller the accumulator matrix shall be compared to the image's resolution. The fourth parameter ($parameter1$) is the higher threshold for the Canny Edge Detector and the lower one is half of it. The fifth parameter ($parameter2$) is the accumulator's threshold after which a circle will be considered a circle. The sixth parameter is the minimum distance between the circles found by the algorithm in the image (as it can find multiple ones and return a list of them). The seventh and eighth parameters are the minimum and maximum radius of the circles to search for. The function returns a list of found circles in the passed image. The parameter values were found by trial and error and taking into account that the wheel should be at least 140 pixels in diameter. Anything smaller would have the text on the tire too small to be able to recognize it, so it would be better to just discard the image now than later.
+
+After finding the main circle in the image, we start looking for other circles in different intervals of radii around the main one. The idea was to extract the most predominant circle in each interval and later combine them if there are too many found. All the found circles are pushed in a list which has the first element the main circle of the image.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% c) Heuristics Circle Reduction                       %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Heuristics for Reducing the Number of Circles}
+
+In this part, I have implemented my heuristics for reducing the number of circles that we have detected in the previous step. The heuristics are based on the assumptions that the detected circles, if they have the centers close enough to each other and the radii similar, they are probably the same circle. This combination of circles also helps with the distortion of the tire that causes it to appear as oval shaped. The grater the threshold to consider two circles the same one, the more circles will be reduced and we will be able to detect even more oval shaped ones. The problem is that we may end up combining the outer and inner rim's detected circles if the values are too big. So through trial and error, I've come up with the values that can be seen in code snippet \ref{code:heuristics-for-fircles}.
+
+\begin{lstlisting}[language=Python, label=code:heuristics-for-fircles, caption={Reducing the Number of Circles}]
+    poped: bool = False
+        while poped == True:
+            poped = False
+            combined_circles = []
+            for i in range(len(circles) - 1):
+                c1, r1 = circles[i]
+                c2, r2 = circles[i + 1]
+                if math.dist(c1, c2) < 20 and abs(r1 - r2) < 15:
+                    combined_circles.append(((c1 + c2) / 2, (r1 + r2) / 2))
+                    poped = True
+            circles = combined_circles
+\end{lstlisting}
+
+It must be noted that I decided to create a new circle from the 2 ones that I considered to be the same one by averaging their centers and radii. The complexity of this algorithm is $O(N^2)$ where $N$ is the number of circles, which is around (TODO: average the no of detected circles).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% d) Conversion to Polar Coordinates                   %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Conversion to Polar Coordinates}
+
+If the number of detected circles could be reduced to only 2 circles in the image, we can determine the center of the wheel, around which we will unwrap the tire. The unwrapping is performed by converting a section of the image around the center of the wheel to polar coordinates (the reasoning was described in subsection \ref{subsec:convert_to_polar} Convert to Polar Coordinates). A function from the polarTransform \cite{site:polarTransform-convertToPolarImage} python module is used. The code snippet \ref{code:polar-coordinates} shows the usage of the function.
+
+\begin{lstlisting}[language=Python, label=code:polar-coordinates, caption={Polar Coordinates}]
+   ((c1, r1), (c2, r2)) = circles
+    r_min = min(r1, r2)
+    r_max = max(r1, r2)
+    c = c1 if r1 == r_min else c2
+
+    unwrapped, _ = polarTransform.convertToPolarImage(img, center=c, initialRadius=r_min, finalRadius=r_max, hasColor=True, order=1, useMultiThreading=True)
+    unwrapped = cv2.rotate(unwrapped, cv2.ROTATE_90_COUNTERCLOCKWISE)
+\end{lstlisting}
+
+I observed that usually the inner circle is better aligned with the center of the tire so we select it as the center. This might be because the outer rim of the tire is deformed at the contact point with the ground. This might trick the circle detection part into believing more circles are present and when reducing their number, the newly calculated center might drift away from the true center.
+
+The first parameter of the function to transform the image to polar coordinates is the image to be transformed. The second parameter is the center of the wheel. The third parameter is the inner radius of the tire and the fourth parameter is the outer one. The fifth parameter is a boolean that indicates if the image has color channels. The sixth parameter is the order of the interpolation step that is needed to figure out what color are some pixels that are stretched and must be calculated. The seventh parameter is a boolean that indicates if the function could run multi-threaded.
+
+As a last step, the image must be rotated 90 degrees counterclockwise to get the tire unwrapped in a horizontal shape with the text written from left to right.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% e) Image Frequency Filtering                         %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Image Frequency Filtering}
+
+The core of the system that enabled the pipeline to detect text on the tire is the Image Frequency Filtering algorithm (\ref{subsubsec:frequency-filtering}). It is applied on a segment of the unwrapped tire image, segments stat have a certain overlay between them. The idea is to search for tire-markings in all segments of the image and then count the position of the supposedly text in an accumulator to perform the voting process. The code snippet \ref{code:frequency-filtering} shows my implementation of this band-pass filter.
+
+\begin{lstlisting}[language=Python, label=code:frequency-filtering, caption={Image Frequency Filtering}]
+    def frequencyFilter(segment, lpf = 7, hpf = 18):
+        fshift = numpy.fft.fftshift(numpy.fft.fft2(segment))
+
+        # create the mask that will be the bandpass filter
+        rows, cols   = fshift.shape
+        disk_big_r   = int(rows * hpf / 100)
+        disk_small_r = int(rows * lpf / 100)
+        disk_r = abs(int(disk_big_r - (disk_big_r - disk_small_r) / 2))
+        mask = numpy.zeros(fshift.shape, numpy.uint8)
+        cv2.circle(mask, (rows//2, cols//2), med_r, color=1, thickness=abs(big_r - small_r))
+
+        fshift = fshift * mask # the actual filtering
+
+        filtered_seg = numpy.fft.ifft2(fshift)
+        filtered_seg = numpy.abs(filtered_seg)
+        return filtered_seg
+\end{lstlisting}
+
+Firstly I use the numpy library to apply a 2 dimensional Fast Fourier Transform on the segment to pass it into the frequency domain. The function outputs a matrix of complex numbers which is fed into the function $numpy.fft.fftshift$ to bring the zero frequency part of the array into it's center (Figure \ref{fig:freq-domain-original}). After this, I create a mask which is a disk with the small radius 7\% of the dimension of the image and the big radius 18\% of the dimension of the image. The mask is then multiplied with the complex numbers in the frequency domain. This action acts as a band-pass filter. Then the remaining frequencies are used to apply the Inverse Fast Fourier Transform to get the filtered segment.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% f) Black Hat Morphological Operation                 %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Black Hat Morphological Operation}
+
+To perform the Black Hat Morphological Operation (which was used in step \ref{subsec:segmentation} in the pipeline), I used the function provided by the OpenCV \cite{site:opencv-morphological-ops}. The code snippet \ref{code:black-hat-morphological-operation} shows the usage of the function.
+
+\begin{lstlisting}[language=Python, label=code:black-hat-morphological-operation, caption={Black Hat Morphological Operation}]
+    filtered_seg = cv2.morphologyEx(filtered_seg, cv2.MORPH_BLACKHAT, np.ones((3,3), np.uint8))
+\end{lstlisting}
+
+The first parameter passed to the function is the image on which the operation will be performed. The second parameter is an enumerate type that indicates what operation will be performed. The third parameter is the structuring element to be used in the operation. The function returns the image after the operation was applied.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% g) OTSU Thresholding                                 %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{OTSU Thresholding}
+
+This algorithm was described here \ref{alg:OTSU-thresholding} and in the implementation I used the function provided by the OpenCV library \cite{site:opencv-OTSU_Thresholding}.
+
+\begin{lstlisting}[language=Python, label=code:OTSU_Thresholding, caption={OTSU Thresholding}]
+    thresh, bin_img = cv2.threshold(filtered_seg, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+\end{lstlisting}
+
+This function is a general threshold function that internally selects what kind of thresholding to apply accordingly to the 4th parameter passed to it. In my case I wanted it to perform OTSU Thresholding in order to automatically detect the threshold value in the segment. The first parameter is the image which has resulted from the previous step \ref{code:black-hat-morphological-operation}. The second parameter is not used in OTSU mode and the third parameter determines to what value the pixels are set when they pass the threshold value.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% h) Dilation Morphological Operation                  %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Dilation (Morphological Operation)}
+
+When I needed to apply the dilation operation (in the \ref{alg:filtering-artifacts} and \ref{alg:voting-filtering} algorithms) I used the function provided by the OpenCV library \cite{site:opencv-dilate-operation}.
+
+\begin{lstlisting}[language=Python, label=code:dilation-morphological-operation, caption={Dilation}]
+    img = cv2.dilate(img, kernel, iterations_no)
+\end{lstlisting}
+
+Like any other morphological operation, the first parameter is the image on which the operation will be performed. The second parameter is the structuring element to be used in the operation. The third parameter is the number of iterations we want the operation to be performed. The function returns the modified image.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% i) Finding Connected Components                      %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Finding Connected Components}
+
+There are multiple moments in the algorithm when I decided to find the connected components that are in the binary image in order to filter out artifacts that I do not consider text (Algorithm \ref{alg:filtering-artifacts}) or when I filtered the voting accumulator matrix for regions that are not probably text (Algorithm \ref{alg:voting-filtering}). I used the implementation provided by the OpenCV library \cite{site:opencv-connected_components} to find the connected components inside an image.
+
+\begin{lstlisting}[language=Python, label=code:connected_components, caption={Connected Components}]
+    _, cnts, _ = cv2.findContours(binary_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+\end{lstlisting}
+
+The first parameter of the function is a binary image in which we want to detect the connected components. The second parameter tells the function how to pack the connected components and how to set their hierarchy. The third and final parameter tells the algorithm if we want to optimize the contours that define the connected component (if a line is found, only its endpoints are worth to be stored). The function returns a tuple of three values. The first value is a modified image. The second value is a list of all the connected components in the image. The third value is a list of the hierarchy of the connected components. I do not make use of the first and third parameters as I am interested only in having the bounding box of the components.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% j) Performing OCR with Read API                      %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Performing OCR with Read API}
+
+As the selected OCR solution is an online service provided by Microsoft \cite{site:Microsoft_Cognitive_Services-Read_API-OCR}, I interact with it through their defined API and using the Python libraries \cite{site:python-pip_azure_cognitive_services} that were provided by them. There is also a Docker deployable solution that Microsoft provides to business entities that handle sensitive information or want to be in charge of their own data. The code snippet \ref{code:read-api-ocr} shows the usage of the API.
+
+\begin{lstlisting}[language=Python, label=code:read-api-ocr, caption={Read API OCR}]
+def OCR(file: str) -> Any:
+    imageData = open(file, "rb")
+    client = ComputerVisionClient(config.ENDPOINT_URL, CognitiveServicesCredentials(config.SUBSCRIPTION_KEY))
+    operationID = client.read_in_stream(imageData, raw=True).headers["Operation-Location"].split("/")[-1]
+    # the API response is checked with busy waiting
+    while True:
+        results = client.get_read_result(operationID)
+        if results.status.lower() not in ["notstarted", "running"]:
+            break
+        time.sleep(10)
+    return results
+\end{lstlisting}
+
+The first step is to open the image we wish to perform OCR on in binary mode. The file descriptor obtained will be used later to submit the payload directly to the API without needing from us to load the image into memory by hand.
+
+The second step is to obtain a client token from the service. The $ENDPOINT_URL$ and $SUBSCRIPTION_KEY$ are defined in another file and represent my credentials for the Azure Cognitive Services. At the moment I am using the free tier of the service which allows me to perform a maximum of 10 requests per minute and maximum 5000 per month. I also obtained 200\$ of free credit to test out the OCR and I am billed out of them for every request I make to the server.
+
+Then, I send my payload by specifying the opened image I wish to perform OCR on. The operation ID is extracted in order to poll the API for the result. Doing busy waiting is not always a great idea to implement an API, but Microsoft's reasoning while designing it was that you can submit multiple requests and you won't have to wait for their results to come all at once.
+
