@@ -8,33 +8,11 @@ import time
 import sys
 import cv2
 import os
+import time
 
-def draw_ocr_results(image, text, pts, color=(0, 255, 0)):
-	# unpack the points list
-	topLeft = pts[0]
-	topRight = pts[1]
-	bottomRight = pts[2]
-	bottomLeft = pts[3]
-	# draw the bounding box of the detected text
-	cv2.line(image, topLeft, topRight, color, 2)
-	cv2.line(image, topRight, bottomRight, color, 2)
-	cv2.line(image, bottomRight, bottomLeft, color, 2)
-	cv2.line(image, bottomLeft, topLeft, color, 2)
-	# draw the text itself
-	cv2.putText(image, text, (topLeft[0], topLeft[1] - 10),
-		cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
-	# return the output image
-	return image
-
-def OCR(file):
+def OCR(file, client):
     imageData = open(file, "rb")
-    image = cv2.imread(file)
-    # initialize the client with endpoint URL and subscription key
 
-    client = ComputerVisionClient(config.ENDPOINT_URL, CognitiveServicesCredentials(config.SUBSCRIPTION_KEY))
-    # call the API with the image and get the raw data, grab the operation
-    # location from the response, and grab the operation ID from the
-    # operation location
     response = client.read_in_stream(imageData, raw=True)
     operationLocation = response.headers["Operation-Location"]
     operationID = operationLocation.split("/")[-1]
@@ -61,8 +39,7 @@ def OCR(file):
         print("[INFO] Attempting to gracefully exit")
         sys.exit(0)
 
-    # make a copy of the input image for final output
-    final = image.copy()
+    text_l = []
     # loop over the results
     for result in results.analyze_result.read_results:
         # loop over the lines
@@ -70,27 +47,42 @@ def OCR(file):
             # extract the OCR'd line from Microsoft's API and unpack the
             # bounding box coordinates
             text = line.text
-            box = list(map(int, line.bounding_box))
-            (tlX, tlY, trX, trY, brX, brY, blX, blY) = box
-            pts = ((tlX, tlY), (trX, trY), (brX, brY), (blX, blY))
             # draw the output OCR line-by-line
-            output = image.copy()
-            output = draw_ocr_results(output, text, pts)
-            final = draw_ocr_results(final, text, pts)
             # show the output OCR'd line
+            text_l.append(text)
             print(text)
     # show the final output image
     # cv2.imwrite("./out/1.jpg", final)
     # cv2.imshow("Final Output", final)
     # cv2.waitKey(0)
+    return text_l
 
 def main():
-    path_in = "../selected/"
+    path_in = "../evaluate/"
     files = os.listdir(path_in)
+
+    client = ComputerVisionClient(config.ENDPOINT_URL, CognitiveServicesCredentials(config.SUBSCRIPTION_KEY))
+
+    time_total = []
+
     for file in files:
+        # if file end in .png is ok
+        if not file.endswith(".png"):
+            continue
+
         print(file)
-        OCR(path_in + file)
+        time_start = time.time()
+        text = OCR(path_in + file, client)
         print("\n")
+        time_end = time.time()
+        time_total.append(time_end - time_start)
+
+        file_name = file.split(".")[0]
+        with open(path_in + file_name + ".txt", "w") as f:
+            f.write(str(text))
+
+    with (open("/mnt/HD/School/A4/licenta/notebook/code/playground/detect_text/evaluation/times-stage3.txt", "w")) as f:
+        f.write(str(time_total))
 
 if __name__ == "__main__":
     main()
