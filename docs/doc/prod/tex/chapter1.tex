@@ -6,9 +6,9 @@
 
 In an ideal world, tires would not be that expensive, especially in the truck market, and their theft or illegal swapping wouldn't be that profitable. Because we do not pay much attention when it comes to our tires, aside from: in the winter to swap them with the winter ones and in summer put the summer ones, if somebody was to change our tires for other similar looking ones (just the same color is enough) the majority of the people would not even notice. You would have to keep track of what tires you are using, probably mark down their serial number and certification number (if present) and from time to time check that the ones on your car or trucks have still the same information.
 
-The tire-markings consists of embossed letters on the side of tires and are put by manufacturers to represent the characteristics of the tire, show its certification and to distinguish between different production batches. A common serial code found on a tire is the DOT code (Figure 0a), the acronym meaning “The Department of Transportation”. It is a marking that is mandated by the United States of America to be present on all the tires that are commercialized in the country and is as close as possible to a serial number. Because having different production lines is expensive, manufacturers print this DOT code also on tires that are sold in other regions of the world. This code is usually composed of: DOT marking (Figure 0a -- i), tire manufacturer or manufacturing plant code (Figure 0a -- ii), the size code (Figure 0a -- iii), tire manufacturer (Figure 0a -- iv) and finally the week and the year the tire was produced in (Figure 0a -- v). Unfortunately, some of these groups of letters are sometimes missing. Anyway, this code is not enough to uniquely identify a tire as the most unique part is the date which has weekly increments only.
+The tire-markings consists of embossed letters on the side of tires and are put by manufacturers to represent the characteristics of the tire, show its certification and to distinguish between different production batches. A common serial code found on a tire is the DOT code (Figure \ref{fig:tire_markings}a), the acronym meaning “The Department of Transportation”. It is a marking that is mandated by the United States of America to be present on all the tires that are commercialized in the country and is as close as possible to a serial number. Because having different production lines is expensive, manufacturers print this DOT code also on tires that are sold in other regions of the world. This code is usually composed of: DOT marking (Figure \ref{fig:tire_markings}a -- i), tire manufacturer or manufacturing plant code (Figure \ref{fig:tire_markings}a -- ii), the size code (Figure \ref{fig:tire_markings}a -- iii), tire manufacturer (Figure \ref{fig:tire_markings}a -- iv) and finally the week and the year the tire was produced in (Figure \ref{fig:tire_markings}a -- v). Unfortunately, some of these groups of letters are sometimes missing. Anyway, this code is not enough to uniquely identify a tire as the most unique part is the date which has weekly increments only.
 
-Another code present on the tire is the E-mark used in Europe (Figure 0b) to mark the certification which the respective tire follows and complies with. It consists of a circle with letter 'e' or 'E' followed by a number (representing the country who issued the approval that the tire meets the certification) inside a circle and next to the circle is a code or 2 lines of code representing the certification itself that the tire complies with.
+Another code present on the tire is the E-mark used in Europe (Figure \ref{fig:tire_markings}b) to mark the certification which the respective tire follows and complies with. It consists of a circle with letter 'e' or 'E' followed by a number (representing the country who issued the approval that the tire meets the certification) inside a circle and next to the circle is a code or 2 lines of code representing the certification itself that the tire complies with.
 
 The problem of tire theft and illegal swapping is more predominant in the truck market as there tires are more expensive and wear out faster. For a truck fleet owner this is a big problem because swapped lower quality tires can be a road hazard and in case of failure they can have catastrophic results. The solution at the moment is a labor intensive, slow and prone to human error or ill will: a person, that can be bribed, has to manually write down the information after buying a new tire and at some intervals of time it has to manually check again that the tire on the truck is still the same one, with the same specifications, and that nobody illegally swapped it for an older or lower quality one. In the case of tire theft, there isn't much to do as there is no way to determine where the tires end up utilized. If we were to apply the same solution to tire theft -- as we apply to tire illegal swapping -- we would need people that would inspect at the tires passing on a road, mark down the information and enter it in a database. If the respective tire was declared stolen, there would be at least a starting point in the theft investigation.
 
@@ -17,35 +17,64 @@ But this human inspection approach doesn't scale when it comes to hundreds of mi
 \section{Problem Statement}
 \label{sec:problem-statement}
 
-To further create a system that is able to almost uniquely recognize a tire, firstly it is needed to extract the markings from the image of a wheel. These are composed of embossed letters on the side of the tire. They are black in color just as the background, so the contrast is not great. The tire-markings that are quite unique and of interest to use are the DOT serial code (Figure 0a) and E-mark certification number (Figure 0b). The manufacturer name(Figure 0c), maximum load (Figure 0d), construction materials, the ISO metric tire codes (Figure 0e) and other supplementary markings only contain information to the physical characteristics of the tire itself and would be nice to obtain, but not necessary.
+To further create a system that is able to almost uniquely recognize a tire, firstly it is needed to extract the markings from the image of a wheel. These are under the form of embossed letters on the side of the tire. They are black in color just as the background, so the contrast is not great. The tire-markings that are quite unique and of interest to us are the DOT serial code (Figure \ref{fig:tire_markings}a) and E-mark certification number (Figure \ref{fig:tire_markings}b). The manufacturer name(Figure \ref{fig:tire_markings}c), maximum ratings (Figure \ref{fig:tire_markings}d), construction materials, the ISO metric tire codes (Figure \ref{fig:tire_markings}e) and other supplementary markings only contain information to the physical characteristics of the tire itself and would be nice to obtain, but not necessary.
 
 At the moment, such recognition systems require extra equipment to create special environment conditions \cite{article:1} or are computationally intensive and require processing on an external server \cite{site:0}. My solution is to create a more robust image processing pipeline, that would not require supplementary incident lights for better letter contrast with the background. It would also be best to move as much as possible of the processing in situ to be as independents as possible from a central server.
 
-TODO: Figure 0 a -- DOT code with i, ii, … , v under each segment of the code | 0 b -- E-mark | 0 c -- manufacturer's name | 0d -- maximum load | 0e -- ISO metric tire codes
+\begin{figure}
+    \centering
+    \includegraphics[width=15.9cm, keepaspectratio]{img/misc/markings-on-tires.jpg}
+    \caption{Tire-markings: a) DOT code, b) E-mark, c) Manufacturer, d) Maximum ratings, e) ISO metric tire codes}
+    \label{fig:tire_markings}
+\end{figure}
 
 \section{Overview of the Solution}
 
-My solution is to create a more robust image processing pipeline, that would not require supplementary incident lights for better letter contrast with the background, that could be run in situ, without the need of an external server for processing, in the detriment of precision (TODO: give exact numbers preferably) in text recognition. In my image processing pipeline I will be feeding photos of car tires captured with a Cannon EOS 1300D with a resolution of 5184 by 3456 pixels. The images were taken from approximately (TODO: masoara de la ce distanta fac poze in medie) cm and at leat the hole tire was always in the shot (Figure 1). With this resolution and distance from the captured object, the characters composing the serial number have around 60 by 20 pixels in size, so not very much. I divided my pipeline in 3 big steps that tackle the problem sequentially: tire unwrapping, text detection, and text recognition.
+My solution is to create a more scalable and easier to deploy image processing pipeline which would not require supplementary incident lights (that provide better letter contrast with the background) and would do as much processing as possible in situ. All of this comes in the detriment of precision, the pipeline having a text detection rate of 0.76 but a precision when it comes to detecting only the DOT code and E-mark of 0.07 (more details in chapter \ref{chap:evaluation}). In my image processing pipeline I will be feeding photos of car tires captured with a Cannon EOS 1300D with a resolution of 5184 by 3456 pixels which will be cropped around the center to have a resolution of 3456 by 3456 pixels. The images were taken from approximately 115 centimeters and the hole wheel was always in the shot (Figure \ref{fig:dataset-entry-example}). With this resolution and distance from the captured object, the characters composing the serial number have around 60 by 20 pixels in size, so not very much. I divided my pipeline in 3 big stages that tackle the problem sequentially: tire unwrapping, text detection, and text recognition.
+
+\begin{figure}
+    \centering
+    \begin{minipage}[c]{0.5\linewidth}
+        \centering
+        \includegraphics[width=5cm, keepaspectratio]{img/misc/dataset-entry-example.jpg}
+        \caption{Dataset entry example}
+        \label{fig:dataset-entry-example}
+    \end{minipage}\hfill
+    \begin{minipage}[c]{0.5\linewidth}
+        \centering
+        \includegraphics[width=5cm, keepaspectratio]{img/misc/DOT_marking-incident_light.jpg}
+        \caption{DOT marking with incident sunlight}
+        \label{fig:tire_marking-DOT-incident_light}
+    \end{minipage}\hfill
+\end{figure}
 
 \subsubsection{Tire Unwrapping}
 
-Consists of the process of determining where in the image the tire is situated, detecting its outer edge, inner edge and the center of the tire, and converting the circular shape of the tire in a rectangular one (unwrapping). In Figure 1 we can see the image of a tire that in Figure 2a has its circles detected and in Figure 2b is the unwrapped result of this step. In the unwrapped version it can be seen that the tire is not perfectly straight because of the perspective of the captured image. If the camera was not perpendicular on the tire's plane and in line with the wheel's axle, the tire has a slight oval shape that is accentuated by the unwrapping as an oval has 2 centers and not only one.
+Consists of the process of determining where in the image the tire is situated, detecting its outer edge, inner edge and the center of the tire, and converting the circular shape of the tire in a rectangular one (unwrapping). In Figure \ref{fig:dataset-entry-example} we can see the image of a tire that has its circles detected and which are used to obtain its unwrapped version (Figure \ref{fig:tire_unwrapping-unwrapped}). In the unwrapped version it can be seen that the tire is not perfectly straight because of the perspective of the captured image. If the camera was not perpendicular on the tire's plane and in line with the wheel's axle, the tire has a slight oval shape that is accentuated by the unwrapping as an oval has 2 centers and not only one.
 
-	TODO: Figure 1
-
-	TODO: Figure 2a and 2b
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth, keepaspectratio]{img/algos/tire_unwrapping-unwrapped.jpg}
+    \caption{Unwrapped tire}
+    \label{fig:tire_unwrapping-unwrapped}
+\end{figure}
 
 \subsubsection{Text Detection}
 
-The scope of this step, to determine the regions where text might be present. Because the next step, text recognition, can be one of the most computationally intensive parts and the image's pixel count is still high after the unwrapping (TODO: get the average size of the unwrapped images), we want to reduce the space where we try to recognize characters.
+The scope of this stage, is to determine the regions where text might be present. Because the final stage, text recognition, can be one of the most computationally intensive parts and the image's pixel count is still quite high after the unwrapping (4,804,166 pixels in average), we want to reduce the space where we try to recognize characters.
 
-I opted this step to not use machine learning and pre-trained models and instead to have a deterministic approach by using a combination of processing techniques and greedy components detection. My approach was to pass the image in the frequency domain in order to remove the high frequencies from the image -- as those tend to represent noise -- and the low frequencies -- who usually represent the uniform background color of the tire, leaving the markings behind. This was difficult to accomplish as the tire-markings -- being embossed letters -- are not very prominent compared to the background of the tire (Figure 4a) without controlling lighting conditions. I needed through multiple tests to come up with a series of heuristics to propose the areas that contain text. At this step I accepted to allow a higher number of false positives in the regions than a higher number of false negatives (who would have meant to miss on some text regions). It will be the task of the next step to deal with the falsely voted regions of text. In the end, I output a binary image (Figure 3) with the same size as the unwrapped one. The white pixels represent supposed text area that the next step should attempt to recognize.
+I opted this stage to not use machine learning and pre-trained models and instead to have a deterministic approach by using a combination of processing techniques and greedy components detection. My approach was to pass the image in the frequency domain in order to remove the high frequencies from the image -- as those tend to represent noise -- and the low frequencies -- who usually represent the uniform background color of the tire, leaving the markings behind. This was difficult to accomplish as the tire-markings -- being embossed letters -- are not very prominent compared to the background of the tire (for example Figure \ref{fig:tire_markings}a) without controlling lighting conditions. I needed through multiple tests to come up with a series of heuristics to propose the areas that contain text. At this stage I accepted to allow a higher number of false positives in the regions than a higher number of false negatives (who would have meant to miss on some text regions). It will be the task of the next stage to deal with the falsely voted regions of text. In the end, I output a binary image (Figure \ref{fig:text_detection-binarymap}) with the same size as the unwrapped one. The white pixels represent supposed text area that the next stage should attempt to recognize.
 
-TODO: Figure 3
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth, keepaspectratio]{img/algos/text_detection-binarymap1.png}
+    \caption{Binary map with text regions}
+    \label{fig:text_detection-binarymap}
+\end{figure}
 
 \subsubsection{Text Recognition}
 
-This is the step where the information is practically extracted from the image (so far I have only prepared the image or selected the regions of interest). Taking into consideration the hardships in extracting the letters' regions in the previous step, I opted to use a pre-trained OCR algorithm in order to be more robust and creating an OCR from scratch was not the scope of this project. The OCR used is part of the solutions suite of Microsoft Cognitive Services \cite{site:Microsoft_Cognitive_Services}. Applied on the found regions of interest, it gave (TODO: metrics).
+This is the stage where the information is practically extracted from the image. So far I have only prepared the image or selected the regions of interest. Taking into consideration the hardships in extracting the letters' regions in the previous stage, I opted to use a pre-trained OCR algorithm in order for the pipeline to be more robust and creating an OCR from scratch was not the scope of this project. The OCR used is part of the solutions suite of Microsoft Cognitive Services \cite{site:Microsoft_Cognitive_Services}. Applied on the found regions of interest, it gave a character error rate of 0.26 when the image was not blurry and could recognize at least a few letters.
 
 \section{The Document's Structure}
 
@@ -53,7 +82,7 @@ In this chapter I presented the problem as a hole and then focused on the proble
 
 The next chapter -- \hyperref[chap:state-of-the-art]{2. State of the Art} -- will present other work in the field, what their approaches were, their setups and results and how I am bringing new contribution to the field.
 
-In chapter \hyperref[chap:proposed-solution]{3. The Proposed Solution} I will go in depth in the image processing pipeline. I will present each step, their sub-steps and each action performed to. I will provide information on each action in a consistent pattern: the output, how it's done -- the algorithm in pseudo-code and its explanation -- and optionally other approaches that didn't work and motivated me to chose this action in the end.
+In chapter \hyperref[chap:proposed-solution]{3. The Proposed Solution} I will go in depth in the image processing pipeline. I will present each stage, its steps, sub-steps and each action performed. I will provide information on each action in a consistent pattern: the output, how it's done -- the algorithm in pseudo-code and its explanation -- and optionally other approaches that didn't work and motivated me to chose this action in the end.
 
 In chapter \hyperref[chap:implementation-details]{4. Implementation Details} I will present and explain the code, the libraries used and how the data is managed. When is the case, I will motivate the choice of an implementation over another one.
 

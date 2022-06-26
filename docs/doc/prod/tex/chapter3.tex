@@ -3,16 +3,16 @@
 
 The solution is an image processing pipeline that would extract from the side picture of a tire the markings written on it. These are present in the form of embossed letters on the tire's exterior walls. By desiring to not have a complex setup and not require supplementary light sources, the system was tested on images taken only with ambient light. This proved to increase the problem's difficulty quite considerably when it came to detecting the regions of text, because the contrast between the embossed letters and the background image got even smaller. Multiple approaches were considered in section \ref{sec:text-detection} Text Detection and in the end one proved fruitful in delivering acceptable results.
 
-The system's steps are described in the following sections:
+The system's stages are described in the following sections:
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Tire Unwrapping (Stage 1)}\label{sec:tire-unwrapping}
 
-As a first step, I wanted to extract only the tire from the input image. This would help because the information I am interested in is located on it. I would also like to unwrap the tire from its disk shape (a circle with a smaller circle as a hole inside of it) into a rectangular one in order to have the writing from left to right rather than in all directions like if it was in a circle.
+As a first stage, I wanted to extract only the tire from the input image. This would help because the information I am interested in is located on it. I would also like to unwrap the tire from its disk shape (a circle with a smaller circle as a hole inside of it) into a rectangular one in order to have the writing from left to right rather than in all directions like if it was in a circle.
 
-To better explain how this was accomplished, this step was split in multiple sub-steps:
+To better explain how this was accomplished, this stage was split in multiple steps:
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Circle Detection}
@@ -31,9 +31,14 @@ Because this is the beginning of the pipeline, I introduced a step to \hyperref[
 Lighting conditions are not controlled and this might result in low contrast in some areas of the image. Here we ensure a constant contrast across the entire image and that the entire histogram is used. This increases the robustness of the overall system.
 
 \paragraph*{Reasoning:}\mbox{}\par
-The pixel in a black and white image is a representation of how bright that particular part of the image should be (0 is for no light and 255 is for maximum brightness on a 8 bit sensor). If we take a photo in broad daylight, the values of all the pixels could all be over 200 lets say. The image would appear as being washed-out and lacking details (Figure 5a). If the photo is taken in a dark environment and all pixel values are under 100, the image appears again quite dark and lacking detail (Figure 5b). A solution is to use the space that remained unused in pixel values and stretch the existing pixel values to also cover those, thus increasing the contrast of the image and its level of detail (Figure 5c). This action is called equalization and can be used to enhance the contrast in an image. Furthermore, it spreads the pixel values across their entire value range so that a under-light and an over-light picture's histogram would look similar. The histogram is a plot that has on the $X$ axis all possible pixel values and on the $Y$ axis the number of times that value appears in an image.
+The pixel in a black and white image is a representation of how bright that particular part of the image should be (0 is for no light and 255 is for maximum brightness on a 8 bit sensor). If we take a photo in broad daylight, the values of all the pixels could all be over 200 lets say. The image would appear as being washed-out and lacking details (Figure \ref{fig:tire_unwrapping-equalization-effect}a). If the photo is taken in a dark environment and all pixel values are under 100, the image appears again quite dark and lacking detail (Figure \ref{fig:tire_unwrapping-equalization-effect}b). A solution is to use the space that remained unused in pixel values and stretch the existing pixel values to also cover those, thus increasing the contrast of the image and its level of detail (Figure \ref{fig:tire_unwrapping-equalization-effect}c). This action is called equalization and can be used to enhance the contrast in an image. Furthermore, it spreads the pixel values across their entire value range so that a under-light and an over-light picture's histogram would look similar. The histogram is a plot that has on the $X$ axis all possible pixel values and on the $Y$ axis the number of times that value appears in an image.
 
-TODO: Figure 5 (a, b, c)
+\begin{figure}
+    \centering
+    \includegraphics[height=7cm, keepaspectratio]{img/algos/tire_unwrapping-histogram_effect.jpg}
+    \caption{Equalization demonstration: a) overexposed image, b) underexposed image, c) equalized image}
+    \label{fig:tire_unwrapping-equalization-effect}
+\end{figure}
 
 A deviation from this standard equalization is Adaptive Histogram Equalization (AHE) that is not applied on the entire image and just on a small portion of it. When calculating the new value for a pixel, only a neighborhood around it is taken into consideration. Thus method while useful in bringing more contrast in to an image that has lighter and darker regions, it also increases the noise in the image. To counteract this, Contrast Limited AHE (CLAHE) was created. The addition is that it has a clipping upper limit and redistributes the pixels that appear too often in the image into another ranges.
 
@@ -157,7 +162,7 @@ The reasoning for why we want to detect the tire in the image is twofold. Firstl
 
 Hough Circles Transform is particularization of the classical Hough Transform \cite{site:circular_hough_transform} and its scope is to extract features from images. The original algorithm is searching for a circle with a known radius, but as can be seen in Algorithm \ref{alg:Hough_Circles}, it can be generalized to an interval of radii.
 
-The first 2 steps in the algorithm are to apply Gaussian Blur \cite{site:Gaussian_blur} (to remove the noise that follows a Gaussian distribution) and convert the color image into gray-scale.
+The first 2 actions in the algorithm are to apply Gaussian Blur \cite{site:Gaussian_blur} (to remove the noise that follows a Gaussian distribution) and convert the color image into gray-scale.
 
 Then it uses Canny Edge Detector \cite{site:Canny_edge_detection} to obtain a new image that contains only the outlines where the algorithm considered a boundary between 2 objects exists. An example can be seen in Figure \ref{fig:canny_output_tire}, where each white pixel represents an edge.
 
@@ -167,7 +172,7 @@ For each radius that the algorithm will probe, will create an accumulator matrix
 
 The central part of the algorithm is the for loop on line \ref{line:Hough_Circles:for_p}. It goes through all the pixels that resulted in being edges and finds their corresponding position in the smaller $acc[i]$ matrix. Then, all around that point in the accumulator matrix at distance $r$, it increments the corresponding cell. 3 iterations of this can be seen in in Figure \ref{fig:Hough_circle_accumulator}.
 
-Because the core algorithm probes for a specific radius, multiple accumulator matrices are used. So, the last step of the algorithm (line \ref{line:Hough_Circles:extract}) is to parse all the accumulators and find the most incremented cell (the red dot in Figure \ref{fig:Hough_circle_accumulator}). That cell is considered the center of the circle and the radius is corresponding to the accumulator matrix it was found in.
+Because the core algorithm probes for a specific radius, multiple accumulator matrices are used. So, the last action of the algorithm (line \ref{line:Hough_Circles:extract}) is to parse all the accumulators and find the most incremented cell (the red dot in Figure \ref{fig:Hough_circle_accumulator}). That cell is considered the center of the circle and the radius is corresponding to the accumulator matrix it was found in.
 
 \begin{figure}
     \centering
@@ -246,7 +251,7 @@ Multiple interpolation levels were used to observe if it affects in any way the 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Text Detection (Stage 2)}\label{sec:text-detection}
-Now that the initial image was processed and just the tire region was kept and unwrapped to have a rectangular form with the text spanning from left to right, the text detection phase can begin. The goal now is to obtain a bitmap of the rectangular tire with regions where text is present. This phase is useful because it will further reduce the space where we have to perform text recognition, and because the goal is to reduce, false-positives are permitted in an acceptable limit. If we can reduce the image search space by at least 80\%, this step is considered successful and the text recognition can begin. Otherwise the image is discarded.
+Now that the initial image was processed and just the tire region was kept and unwrapped to have a rectangular form with the text spanning from left to right, the text detection phase can begin. The goal now is to obtain a bitmap of the rectangular tire with regions where text is present. This phase is useful because it will further reduce the space where we have to perform text recognition, and because the goal is to reduce, false-positives are permitted in an acceptable limit. If we can reduce the image search space by at least 80\%, this stage is considered successful and the text recognition can begin. Otherwise the image is discarded.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Segmentation}
@@ -475,7 +480,7 @@ On the filtered accumulator matrix, 4 iterations of the morphological operation 
 
 Now, on the newly diluted accumulator matrix and the new connected components, we apply another filtration using the heuristics $heu_4$\label{filtering:heuristics-4} that consist of: heuristic \hyperref[filtering:heuristics-3]{$hre_3$}, $h > 200p$ (the text region is too tall so it is a region that we are not interested in) or $h > 100p \;\&\; h/w > 0.85$ (a region too tall that doesn't have a prominent enough shape).
 
-The result of this step is a bitmap that when applied over the wrapped tire shows regions of text (Figure \ref{fig:text-regions-on-unwrapped-tire}). This bitmap will be used in the text recognition step to indicate the regions of interest in the image and reduce the space on wich the algorithm will run on.
+The result of this step is a bitmap that when applied over the wrapped tire shows regions of text (Figure \ref{fig:text-regions-on-unwrapped-tire}). This bitmap will be used in the text recognition stage to indicate the regions of interest in the image and reduce the space on wich the algorithm will run on.
 
 \begin{figure}
     \centering
@@ -495,7 +500,7 @@ Now that we have reduced our unwrapped image to a few regions of interest, we ca
 
 \paragraph*{Reasoning:}\mbox{}\par
 
-It could be considered that the reason is stated in the \hyperref[sec:motivation]{Motivation} section of this work, but to reiterate, we want to extract the serial DOT code and the E-mark certification in order to almost uniquely identify a tire. I chose to use an OCR for this step because they are the most common approach to text recognition and the availability of ready made solutions only increased in the past years \cite{site:OCR_comparison}. There is also a wide variety to the OCR solutions that are offered as services, accessible through APIs.
+It could be considered that the reason is stated in the \hyperref[sec:motivation]{Motivation} section of this work, but to reiterate, we want to extract the serial DOT code and the E-mark certification in order to almost uniquely identify a tire. I chose to use an OCR for this stage because they are the most common approach to text recognition and the availability of ready made solutions only increased in the past years \cite{site:OCR_comparison}. There is also a wide variety to the OCR solutions that are offered as services, accessible through APIs.
 
 \paragraph*{Algorithm:}\mbox{}\par
 The OCR I used is a service from Microsoft Cognitive Solutions \cite{site:Microsoft_Cognitive_Services} and it uses "deep-learning-based models and works with text on a variety of surfaces and backgrounds" (source: \cite{site:Microsoft_Cognitive_Services-Explained}). So, it is not specially tailored to our case (tire images). This is a good thing as it provides versatility at the expense of performance and openness of the system.
@@ -503,7 +508,7 @@ The OCR I used is a service from Microsoft Cognitive Solutions \cite{site:Micros
 The Read API (that is the OCR's name) \cite{site:Microsoft_Cognitive_Services-Read_API-OCR} is accessed through API calls to a configured endpoint. For each region of interest extracted in the Text Detection \ref{sec:text-detection} section, a request is sent to the endpoint which returns its guess on the text in the image. While not being able to perform all the processing on only one local machine (as we had to rely on the computation power and OCR solution hosted on a remote server), the impact this has on performance is reduced because we submit only the regions of interest (which have a smaller size than the original unwrapped tire image).
 
 \paragraph*{Results:}\mbox{}\par
-The results from this step are in the form of annotations that are coupled with the original detected region of interest. The recognized text returned by the OCR will be categorized in the following categories: DOT serial code, E-Mark certification and miscellaneous.
+The results from this stage are in the form of annotations that are coupled with the original detected region of interest. The recognized text returned by the OCR will be categorized in the following categories: DOT serial code, E-Mark certification and miscellaneous.
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % %%% x) TEMPLATE                                          %%%
