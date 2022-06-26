@@ -74,7 +74,11 @@ By finding regions of interest in the images, the space in which OCR must be per
 
 \section{Evaluating the Text Recognition (Stage 3)}\label{section:evaluation-ocr}
 
-When it comes to evaluating the OCR, I will use the Character Error Rate (CER) \cite{site:evaluation-OCR-character_error_rate} metric. This will show the performance of the algorithm in recognizing the letters out of the good regions of interest. I will hand pick the true positive images containing text of an acceptable image quality and discard the false positives detected at the \ref{sec:text-detection} Text Detection section stage because I have limited a limited number of credits to try out the OCR (called Read API) from Microsoft Cognitive Services \cite{site:Microsoft_Cognitive_Services}.
+When it comes to evaluating the OCR, I will use the Character Error Rate (CER) \cite{site:evaluation-OCR-character_error_rate} metric. This will show the performance of the algorithm in recognizing the letters out of the good regions of interest, lower being better.
+\[CER = \frac{S + D + I}{N}\]
+Where S is \# of substitutions, D is \# of deletions, I is \# of insertions and N is \# of characters in ground truth.
+
+I will hand pick the true positive images containing text of an acceptable image quality and discard the false positives detected at the \ref{sec:text-detection} Text Detection section stage because I have limited a limited number of credits to try out the OCR (called Read API) from Microsoft Cognitive Services \cite{site:Microsoft_Cognitive_Services}.
 
 \begin{figure}
     \centering
@@ -114,3 +118,8 @@ Measuring the running time is not a precise task as the OCR is a web service and
 
 \section{Overall Evaluation}\label{section:evaluation-overall}
 
+The pipeline created consists of 3 stages which take in total an average of 16.07 seconds or 5.9 seconds without the last stage that could not be exactly measured. The average time for processing an image and extracting its text is difficult to be compared to the other works \cite{article:1} \cite{site:0} because of the the differences in hardware, input size and the lack of a standardized benchmark.
+
+However, in terms of performance, we can measure our results with the other works in the field only in averages. My pipeline, before reaching the OCR step, is able to parse 61.74\% of the dataset. This means that in 61.74\% of cases it is able to identify in an image the DOT code and the E-mark (with the mentions specified in section \ref{section:evaluation-text_detection} regarding incomplete detections). This is comparable to the average precision of 64.7\% obtained by \cite{site:0} in the text detection stage, though it must be mentioned that they are interested in more tire-markings than the identification codes.
+
+If the image that is being processed by my pipeline is not blurry, the OCR provided by Microsoft Cognitive Services \cite{site:Microsoft_Cognitive_Services-Read_API-OCR} is able to recognize the text in the image with an CER of 0.26. The performance on the entire dataset when the blurry images are introduced is lower, the CER reaching 0.51. This is still comparable to the average CER of 0.39 obtained by \cite{site:0} on all tire-markings they were interested in. The work of Kazmi et alia \cite{article:1} obtained an CER of 0.23 on the 9 images they hand picked and tested on.
