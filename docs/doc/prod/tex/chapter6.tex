@@ -1,17 +1,39 @@
 \chapter{Conclusions}\pagestyle{fancy}\setlength{\parindent}{3em}
 \label{chap:conclusions}
 
-In this work, I introduced a full pipeline for detecting and recognizing the tire-markings that are able to identify a tire (the DOT code and the E-mark certification). The pipeline is able to recognize these markings in 61.74\% of cases by using the deterministic processing steps employed in section \ref{sec:tire-unwrapping} and section \ref{sec:text-detection}. The approach in detecting the tire-markings is a novel approach compared to other works in the field which employ a combination of Histogram of Oriented Gradients with Convolutional Neural Network based multi-layered perceptron \cite{article:1} or pre-trained text detection models which are specialized later for tire-markings detection \cite{site:0}. For the text recognition step I employed an OCR offered as a service by Microsoft \cite{site:Microsoft_Cognitive_Services} which in was able to obtain a character error rate (CER) of 0.26 in images where any text was detected. The OCR was not able to recognize the text in images which we could consider blurry (TODO: sa pun un exemplu si probabil sa il pun mai sus si sa fac aici referinta la el iar), this bringing the CER to 0.51 on the entire collected dataset.
+In this work, I introduced a full pipeline for detecting and recognizing the tire-markings that are able to identify a tire (the DOT code and the E-mark certification). The pipeline is able to recognize these markings in 61.74\% of cases by using the deterministic processing steps employed in section \ref{sec:tire-unwrapping} and section \ref{sec:text-detection}. The approach in detecting the tire-markings is a novel approach compared to other works in the field which employ a combination of Histogram of Oriented Gradients with Convolutional Neural Network based multi-layered perceptron \cite{article:1} or pre-trained text detection models which are specialized later for tire-markings detection \cite{site:0}. For the text recognition step I employed an OCR offered as a service by Microsoft \cite{site:Microsoft_Cognitive_Services} which in was able to obtain a character error rate (CER) of 0.26 in images where any text was detected. The OCR was not able to recognize the text in images which we could consider blurry and with low contrast (like Figure \ref{fig:text_recognition-blurry_image}), this bringing the CER to 0.51 on the entire collected dataset.
 
 \paragraph{Difficulties}\mbox{}\par
 
-I could say that the most difficult part of the pipeline to implement was the text detection step. The main culprit of this was the low contrast between the embossed letters (that make up the tire-markings) and their background. Because the letters are not a distinctive feature as can be seen in Figure [TODO: ref la figure din chap 1, e una pe acolo poate chiar 2], if they appear in the output of a processing algorithm, they are always accompanied by noise or other features on the tire that do not interest us.
+I could say that the most difficult part of the pipeline to implement was the text detection step. The main culprit of this was the low contrast between the embossed letters (that make up the tire-markings) and their background. Because the letters are not a distinctive feature as can be seen in Figure \ref{fig:text_detection-segment}, if they appear in the output of a processing algorithm, they are always accompanied by noise or other features on the tire that do not interest us.
 
-For the beginning, I tried with Sobel image gradient [TODO: cite] to obtain a gradient of change in the image, but it did not look useful as can be seen in Figure [TODO:].
+For the beginning, I tried with Sobel edge detector \cite{article:sobel_edge_detector} to obtain a gradient of change in the image, but it did not look useful as can be seen in Figure \ref{fig:failed-sobel}.
 
-Then I tried further by applying Canny Edge Detector \cite{site:Canny_edge_detection} but in order to obtain usable results, I had to fine-tune its parameters and these were extremely influenced by the color of the tire, the lighting conditions and noise. A somewhat usable output after fine-tuning can be seen in Figure [TODO:]. Noise was a real issue because if too much blurring was applied to remove the noise the letters would lose shape.
+Then I tried further by applying Canny Edge Detector \cite{site:Canny_edge_detection} but in order to obtain usable results, I had to fine-tune its parameters and these were extremely influenced by the color of the tire, the lighting conditions and noise. A somewhat usable output after fine-tuning can be seen in Figure \ref{fig:failed-canny}. Noise was a real issue because if too much blurring was applied to remove the noise the letters would lose shape.
 
-I also tried some thresholding techniques. OTSU Thresholding [TODO: cite] proved useful because it is a global algorithm and different materials on the wheel reflect light in different amounts so a single threshold is not practical. I tried also the option of adaptive Thresholding and it proved useful as can be seen in Figure [TODO:], but it suffers also from parameter tuning, just like the Canny Edge Detector and because the system must be robust this is not acceptable.
+I also tried some thresholding techniques. OTSU Thresholding proved useful because it is a global algorithm and different materials on the wheel reflect light in different amounts so a single threshold is not practical. I tried also the option of adaptive Thresholding and it proved useful as can be seen in Figure \ref{fig:failed-adaptive_tresholding}, but it suffers also from parameter tuning, just like the Canny Edge Detector and because the system must be robust this is not acceptable.
+
+\begin{figure}
+    \centering
+    \begin{minipage}[c]{0.33\linewidth}
+        \centering
+        \includegraphics[width=4.25cm, height=4.25cm]{img/failed_tries/sobel.png}
+            \caption{Sobel trial}
+            \label{fig:failed-sobel}
+    \end{minipage}\hfill
+    \begin{minipage}[c]{0.33\linewidth}
+        \centering
+        \includegraphics[width=4.25cm, height=4.25cm]{img/failed_tries/canny.png}
+            \caption{Canny trial}
+            \label{fig:failed-canny}
+    \end{minipage}\hfill
+    \begin{minipage}[c]{0.33\linewidth}
+        \centering
+        \includegraphics[width=4.25cm, height=4.25cm]{img/failed_tries/adaptive_thresholding.png}
+        \caption{Adaptive Thresholding trial}
+        \label{fig:failed-adaptive_tresholding}
+    \end{minipage}\hfill
+\end{figure}
 
 Before resorting to Machine Learning models to solve this step (a thing that I avoided in order to keep the processing pipeline simple and not computationally intensive), a solution appeared. Filtering certain frequencies in the frequency domain of the image showed that only the letters can be left prominent in a segment of the image. From this stepping stone, the text detection stage was developed in section \ref{sec:text-detection}. It proved to be quite accurate in detecting the identification markings on tires, 76.82\% of them to be more precise.
 

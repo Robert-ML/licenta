@@ -31,13 +31,37 @@ Because this is the beginning of the pipeline, I introduced a step to \hyperref[
 Lighting conditions are not controlled and this might result in low contrast in some areas of the image. Here we ensure a constant contrast across the entire image and that the entire histogram is used. This increases the robustness of the overall system.
 
 \paragraph*{Reasoning:}\mbox{}\par
-The pixel in a black and white image is a representation of how bright that particular part of the image should be (0 is for no light and 255 is for maximum brightness on a 8 bit sensor). If we take a photo in broad daylight, the values of all the pixels could all be over 200 lets say. The image would appear as being washed-out and lacking details (Figure \ref{fig:tire_unwrapping-equalization-effect}a). If the photo is taken in a dark environment and all pixel values are under 100, the image appears again quite dark and lacking detail (Figure \ref{fig:tire_unwrapping-equalization-effect}b). A solution is to use the space that remained unused in pixel values and stretch the existing pixel values to also cover those, thus increasing the contrast of the image and its level of detail (Figure \ref{fig:tire_unwrapping-equalization-effect}c). This action is called equalization and can be used to enhance the contrast in an image. Furthermore, it spreads the pixel values across their entire value range so that a under-light and an over-light picture's histogram would look similar. The histogram is a plot that has on the $X$ axis all possible pixel values and on the $Y$ axis the number of times that value appears in an image.
+The pixel in a black and white image is a representation of how bright that particular part of the image should be (0 is for no light and 255 is for maximum brightness on a 8 bit sensor). If we take a photo in broad daylight, the values of all the pixels could all be over 200 lets say. The image would appear as being washed-out and lacking details like Figure \ref{fig:tire_unwrapping-equalization-effect}a and would have a histogram looking like Figure \ref{fig:tire_unwrapping-hist_of_equalization_effect_a}. If the photo is taken in a dark environment and all pixel values are under 100, the image appears again quite dark and lacking detail, this is the case for Figure \ref{fig:tire_unwrapping-equalization-effect}b whose histogram is drawn in Figure \ref{fig:tire_unwrapping-hist_of_equalization_effect_b}. A solution is to use the space that remained unused in pixel values and stretch the existing pixel values to also cover those, thus increasing the contrast of the image and its level of detail. This action is called equalization and can be used to enhance the contrast in an image, like can be seen in Figure \ref{fig:tire_unwrapping-equalization-effect}c. Furthermore, it spreads the pixel values across their entire value range so that a under-light and an over-light picture's histogram would look similar (Figure \ref{fig:tire_unwrapping-hist_of_equalization_effect_c}). The histogram is a plot that has on the $X$ axis all possible pixel values and on the $Y$ axis the number of times that value appears in an image and usually is on a logarithmic scale.
 
 \begin{figure}
     \centering
-    \includegraphics[height=7cm, keepaspectratio]{img/algos/tire_unwrapping-histogram_effect.jpg}
-    \caption{Equalization demonstration: a) overexposed image, b) underexposed image, c) equalized image}
-    \label{fig:tire_unwrapping-equalization-effect}
+    \begin{minipage}[c]{0.5\linewidth}
+        \includegraphics[width=7.95cm, keepaspectratio]{img/algos/tire_unwrapping-histogram_effect.jpg}
+        \caption{Equalization demonstration: a) overexposed image, b) underexposed image, c) equalized image}
+        \label{fig:tire_unwrapping-equalization-effect}
+    \end{minipage}\hfill
+    \begin{minipage}[c]{0.5\linewidth}
+        \centering
+        \includegraphics[width=7.95cm, keepaspectratio]{img/algos/tire_unwrapping-histogram_effect-hist_a.pdf}
+            \caption{Hist. of Fig. \ref{fig:tire_unwrapping-equalization-effect}a}
+            \label{fig:tire_unwrapping-hist_of_equalization_effect_a}
+    \end{minipage}\hfill
+\end{figure}
+
+\begin{figure}
+    \centering
+    \begin{minipage}[c]{0.50\linewidth}
+        \centering
+        \includegraphics[width=7.95cm, keepaspectratio]{img/algos/tire_unwrapping-histogram_effect-hist_b.pdf}
+        \caption{Hist. of Fig. \ref{fig:tire_unwrapping-equalization-effect}b}
+        \label{fig:tire_unwrapping-hist_of_equalization_effect_b}
+    \end{minipage}\hfill
+    \begin{minipage}[c]{0.50\linewidth}
+        \centering
+        \includegraphics[width=7.95cm, keepaspectratio]{img/algos/tire_unwrapping-histogram_effect-hist_c.pdf}
+        \caption{Hist. of Fig. \ref{fig:tire_unwrapping-equalization-effect}c}
+        \label{fig:tire_unwrapping-hist_of_equalization_effect_c}
+    \end{minipage}\hfill
 \end{figure}
 
 A deviation from this standard equalization is Adaptive Histogram Equalization (AHE) that is not applied on the entire image and just on a small portion of it. When calculating the new value for a pixel, only a neighborhood around it is taken into consideration. Thus method while useful in bringing more contrast in to an image that has lighter and darker regions, it also increases the noise in the image. To counteract this, Contrast Limited AHE (CLAHE) was created. The addition is that it has a clipping upper limit and redistributes the pixels that appear too often in the image into another ranges.
@@ -110,11 +134,9 @@ Then, we iterate through all the pixel values in the histogram and create a new 
 \begin{figure}
     \centering
     \includegraphics[width=0.4\columnwidth]{img/algos/Clahe-redistribution.eps}
-    \caption{the histogram after first clipping, source: TODO wikipedia}
+    \caption{The histogram after first clipping, source: \cite{site:CLAHE_clipping_image}}
     \label{fig:CLAHE_hist}
 \end{figure}
-
-% TODO: figure source https://en.wikipedia.org/wiki/Adaptive_histogram_equalization
 
 The limit we excede with will be redistributed after this on line \ref{line:CLAHE:redistribute}. Here, we go through the pixel values in the histogram again and at a simmilary random step we add one more pixel to the count that overflowed earlyer. The step is computed by the formula: $step \gets N_{gray} \div N_{remain}$.
 
@@ -123,7 +145,23 @@ Before starting to compute the next cell, we adjust the current one acoording to
 After all the cels were modified and equalized, we can stisch them back together. But because we had a cell by cell approach to calculating the histogram, border pixels might have very different values. This is why an extra step of bilinear interpolation is performed on the border pizels of each of the cells.
 
 \paragraph*{Results:}\mbox{}\par
-After equalization is applied, if the input image's histogram looked like TODO: Figure, now it looks like TODO: Figure.
+If before the equalization the histogram of the image looked like Figure \ref{fig:tire_unwrapping-hist_of_uneq_img}, after the equalization it looks like Figure \ref{fig:tire_unwrapping-hist_of_eq_img}. It can be observed it is smoother and part of the pixels were brightened.
+
+\begin{figure}
+    \centering
+    \begin{minipage}[c]{0.50\linewidth}
+        \centering
+        \includegraphics[width=7.95cm, keepaspectratio]{img/algos/tire_unwrapping-histogram_of_uneq_image.pdf}
+        \caption{Histogram without equalization}
+        \label{fig:tire_unwrapping-hist_of_uneq_img}
+    \end{minipage}\hfill
+    \begin{minipage}[c]{0.50\linewidth}
+        \centering
+        \includegraphics[width=7.95cm, keepaspectratio]{img/algos/tire_unwrapping-histogram_of_eq_image.pdf}
+        \caption{Histogram with equalization}
+        \label{fig:tire_unwrapping-hist_of_eq_img}
+    \end{minipage}\hfill
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% b) HOUGH CIRCLES TRANFORM                             %%%
@@ -164,37 +202,36 @@ Hough Circles Transform is particularization of the classical Hough Transform \c
 
 The first 2 actions in the algorithm are to apply Gaussian Blur \cite{site:Gaussian_blur} (to remove the noise that follows a Gaussian distribution) and convert the color image into gray-scale.
 
-Then it uses Canny Edge Detector \cite{site:Canny_edge_detection} to obtain a new image that contains only the outlines where the algorithm considered a boundary between 2 objects exists. An example can be seen in Figure \ref{fig:canny_output_tire}, where each white pixel represents an edge.
+Then it uses Canny Edge Detector \cite{site:Canny_edge_detection} to obtain a new image which contains only the outlines where the algorithm considered a boundary between 2 objects exists. An example can be seen in Figure \ref{fig:canny_output_tire}, where each white pixel represents an edge.
 
 On line \ref{line:Hough_Circles:for_r}, it can be seen the $loop$ that will probe for the radius interval that was requested.
 
 For each radius that the algorithm will probe, will create an accumulator matrix that is $dp$ times smaller than the original image. The purpose of this matrix will be explained shortly.
 
-The central part of the algorithm is the for loop on line \ref{line:Hough_Circles:for_p}. It goes through all the pixels that resulted in being edges and finds their corresponding position in the smaller $acc[i]$ matrix. Then, all around that point in the accumulator matrix at distance $r$, it increments the corresponding cell. 3 iterations of this can be seen in in Figure \ref{fig:Hough_circle_accumulator}.
+The central part of the algorithm is the for loop on line \ref{line:Hough_Circles:for_p}. It goes through all the pixels that resulted in being edges and finds their corresponding position in the smaller $acc[i]$ matrix. Then, all around that point in the accumulator matrix at distance $r$, it increments the corresponding cell. Four probed pixels (the white squares) of this can be seen in in Figure \ref{fig:Hough_circle_accumulator} where it can be seen that when circles overlap the value in that cell increases.
 
-Because the core algorithm probes for a specific radius, multiple accumulator matrices are used. So, the last action of the algorithm (line \ref{line:Hough_Circles:extract}) is to parse all the accumulators and find the most incremented cell (the red dot in Figure \ref{fig:Hough_circle_accumulator}). That cell is considered the center of the circle and the radius is corresponding to the accumulator matrix it was found in.
+Such an accumulator is created for each probed radius and it will result in a 3D space. So, the last action of the algorithm (line \ref{line:Hough_Circles:extract}) is to search in this 3D space of accumulators and find the most incremented cell (the red dot in Figure \ref{fig:Hough_circle_accumulator}). That cell is considered the center of the circle and the radius is corresponding to the accumulator matrix it was found in.
 
 \begin{figure}
     \centering
     \begin{minipage}[c]{0.33\linewidth}
         \centering
-        \includegraphics[width=4.25cm, height=4.25cm]{img/algos/Canny_wheel.JPG}
+        \includegraphics[width=4.25cm, height=4.25cm]{img/algos/tire_unwrapping-Canny_wheel.jpg}
             \caption{Canny output}
             \label{fig:canny_output_tire}
     \end{minipage}\hfill
     \begin{minipage}[c]{0.33\linewidth}
         \centering
-        % TODO: figure
-        \includegraphics[width=4.25cm, height=4.25cm]{img/algos/Canny_wheel.JPG}
+        \includegraphics[width=4.25cm, height=4.25cm]{img/algos/tire_unwrapping-HCT_acc.png}
             \caption{HCT accumulator}
             \label{fig:Hough_circle_accumulator}
-    \end{minipage}
+    \end{minipage}\hfill
     \begin{minipage}[c]{0.33\linewidth}
         \centering
-        \includegraphics[width=4.25cm, height=4.25cm]{img/algos/Hough-Circles-Transform_many_circles.png}
+        \includegraphics[width=4.25cm, height=4.25cm]{img/algos/tire_unwrapping-detected_circles.jpg}
         \caption{HCT result}
         \label{fig:Hough-Circles-Transform_result}
-    \end{minipage}
+    \end{minipage}\hfill
 \end{figure}
 
 \paragraph*{Results:}\mbox{}\par
@@ -208,7 +245,7 @@ Because tires have different dimensions and an outer and inner rim, I have to se
 \label{subsubsec:circ_det_heuristics}
 
 \paragraph*{Accomplishes:}\mbox{}\par
-Reduces the number of detected circles in the previous step and remains only with 2 concentric circles representing the tire's inner and outer rims. If his step fails to remain with only 2 circles, then the image is discarded.
+Reduces the number of detected circles in the previous step (Figure \ref{fig:Hough-Circles-Transform_result}) and remains only with 2 concentric circles representing the tire's inner and outer rims (Figure \ref{fig:Hough_Circles_Transform-filtered_circles}). If his step fails to remain with only 2 circles, then the image is discarded.
 
 \paragraph*{Reasoning:}\mbox{}\par
 There are many types of tires in the wild with different shapes and sizes, so it was better in the previous step to detect more circles in the image than to look for only 2 circles. When looking only for 2 circles using the Hough Circular Transform, the car's wheel arc can be falsely detected as a circle or the wheel cap can have a pattern on it that would falsely trick the circle detection algorithm. Because of this reason, I preferred to detect many false positives and at this stage filter through them and remain with only the mot concentric circles that have at least a certain radius difference. Another possible problem would be that the tire is not a perfect circle because of the contact point with the ground or because when taking the image, the camera sensor was not in line with the wheel's axle.
@@ -219,14 +256,21 @@ The first heuristic I apply is to reduce the circles that are very similar one t
 The second heuristic's goal is to create 2 concentric circles. At first I was taking the biggest and smallest circles and using the average of their center's coordinates to calculate a new center. This gave unsatisfactory results as the computed center would be quite far from the true one and in the unwrapping phase, it would not make the tire a continuous horizontal strip. The improvement I ended up finding was that the smaller radius circle would have the center closer to the wheel's true center, so it would be better to use the inner circle as the base rather than to calculate a new center. The reason to why the smaller circle has a better center is that the inner circle usually represents the inner rim of the tire that is a perfect circle, while the outer rim is deformed at the contact point between the ground and the wheel. That deformity can trow off the center calculated at the previous step. If more than 2 circles are present, this step is skipped and the image will be discarded as we couldn't detect the inner and outer parts of the tire. An improvement that could be made is that if more circles are found, to select the ones that have the closest centers and a radius bigger than a certain value.
 
 \paragraph*{Results:}\mbox{}\par
-The resulted concentric circles are an approximation of what the true circle might be, but it is close enough so that the tire can be unwrapped. The circle might not follow perfectly the rim of the tire because of the distortion of the wheel on the ground, or the distortion was introduced when taking the picture if the camera's sensor wasn't horizontal and in line with the wheel's axle. If we couldn't remain with 2 concentric circles at this step, the image is discarded. Otherwise, it is passed to the next step.
+The resulted concentric circles that can be seen in Figure \ref{fig:Hough_Circles_Transform-filtered_circles} are an approximation of what the true circle might be, but it is close enough so that the tire can be unwrapped. The circle might not follow perfectly the rim of the tire because of the distortion of the wheel on the ground, or the distortion was introduced when taking the picture if the camera's sensor wasn't horizontal and in line with the wheel's axle. If we couldn't remain with 2 concentric circles at this step, the image is discarded. Otherwise, it is passed to the next step.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=4.25cm, height=4.25cm]{img/algos/tire_unwrapping-filtered_circles.jpg}
+    \caption{Filtered Concentric Circles Detected}
+    \label{fig:Hough_Circles_Transform-filtered_circles}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Convert to Polar Coordinates}
 \label{subsec:convert_to_polar}
 
 \paragraph*{Accomplishes:}\mbox{}\par
-This step unwraps the tire and outputs it as a continuous horizontal strip as can be seen in Figure [TODO]. This can be done because we have detected the supposed center of the tire and its radius.
+This step unwraps the tire and outputs it as a continuous horizontal strip as can be seen in Figure \ref{fig:tire_unwrapping-unwrapped}. This can be done because we have detected the supposed center of the tire and its radius.
 
 \paragraph*{Reasoning:}\mbox{}\par
 The horizontal strip will help in text detection and recognition, as it is easier to work with text going in only one direction.
@@ -244,8 +288,20 @@ $angle = \arctan(y/x)$
 There is a problem though. Closer we are to the new selected center, less points are present on the surrounding circle than on a bigger one. The resulting image after the Polar transformation will have as it's width the pixel count of the pixels that were on the most outer circle's perimeter. The points closer to the center must be stretched out in order to fill in the gaps and this is solved using interpolation. New computed pixels are used to fill in the gaps.
 
 \paragraph*{Results:}\mbox{}\par
-Multiple interpolation levels were used to observe if it affects in any way the output, but the letters on the tire are far away from the center of the polar transform that even a bilinear interpolation would not affect them. Now, I have the unwrapped tire as a new image and it is ready to be processed further in order to obtain the regions of text.
+Multiple interpolation levels were used to observe if it affects in any way the output, but the letters on the tire are far away from the detected center around which the polar transform si applied that even a bilinear interpolation is good. Now, I have the unwrapped tire as a new image (Figure \ref{fig:tire_unwrapping-unwrapped}) and it is ready to be processed further in order to obtain the regions of text. It must be mentioned that some wheel centers are falsely recognized and after the polar transform an unusable image is generated, like can be seen in Figure \ref{fig:tire_unwrapping-unwrapped-failed}. These are found and removed manualy and are not used in the next stages.
 
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth, keepaspectratio]{img/algos/tire_unwrapping-unwrapped.jpg}
+    \caption{Successfully Unwrapped tire}
+    \label{fig:tire_unwrapping-unwrapped}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth, keepaspectratio]{img/algos/tire_unwrapping-unwrapped-failed.png}
+    \caption{Failed unwrapping of tire}
+    \label{fig:tire_unwrapping-unwrapped-failed}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -271,7 +327,14 @@ I need to calculate the corners of cells that have a certain overlap between the
 where $L$ is the number of pixels, $o$ is the size of the overlap region and $no$ is the region of a cell that is not overlapped.
 
 \paragraph*{Results:}\mbox{}\par
-Now the big picture was split in multiple smaller overlapping cells that will be further processed individually.
+Now the big picture was split in multiple smaller overlapping cells (Figure \ref{fig:text_detection-segment}) that will be further processed individually.
+
+\begin{figure}
+    \centering
+    \includegraphics[height=6cm, keepaspectratio]{img/algos/text_detection-img_to_filter.jpg}
+    \caption{Segment}
+    \label{fig:text_detection-segment}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Segment Binarization}
@@ -309,36 +372,52 @@ Because the background of the tire is fairly uniform in blackness and noise, the
     \label{fig:example-img-freq-domain}
 \end{figure}
 
-Any analog signal is composed from multiple signals of different frequencies. These frequencies could be extracted using Fourier Transform [TODO: cite] or reconstruct the signal using its inverse. Because it is a computationally expensive algorithm, in practice Fast Fourier Transform [TODO: cite] is used because it usually gives acceptable results.
+Any analog signal is composed from multiple signals of different frequencies. These frequencies could be extracted using Fourier Transform \cite{book:fourier_transform} or reconstruct the signal using its inverse. Because it is a computationally expensive algorithm, in practice Fast Fourier Transform \cite{book:fourier_transform} is used because it usually gives acceptable results.
 
 This step can be described by Algorithm \ref{alg:frequency-filtering}. But firstly, it must be made clear what passing an image into the frequency domain means. The easiest is to take a one dimensional example (a line) and then generalize for a two dimensional case (an image).
 
 On the line, each pixel value could be considered to represent the amplitude of a signal. The signal progresses in time to one direction of the line. This signal can be decomposed in its core frequencies, to the left the low ones and the high ones to the right. The same thinking could be also applied to a 2D image, just that we get a 2D frequency image with real and imaginary components. For example, Figure \ref{fig:example-img-freq-domain} represents what happens if we have only a frequency present, what the resulting image would look like. The distance from the corner represents the frequency, while the position of the dot is the angle the bands will appear after applying the Inverse Fourier Transform.
 
-To be easier to visualize the frequencies, the image is usually shifted so that the 0 frequency is in the middle of the image rather than in the corners like in Figure \ref{fig:freq-domain-original}. This is useful also because it makes it easier to apply a band-pass filter. To apply this, we just have to blackout the middle of the image and the outer parts. In the end we are left with a disk shaped frequency representation of the image (Figure \ref{fig:freq-domain-filtered}). Experimentally I got usable results by keeping a disk with the small radius 14\% and the big radius 36\% of the found frequencies in the image.
+To be easier to visualize the frequencies, the image is usually shifted so that the 0 frequency is in the middle of the image rather than in the corners like in Figure \ref{fig:text_detection-freq_domain_original}. This is useful also because it makes it easier to apply a band-pass filter. To apply this, we just have to blackout the middle of the image and the outer parts. In the end we are left with a disk shaped frequency representation of the image (Figure \ref{fig:text_detection-freq_domain_filtered}). Experimentally I got usable results by keeping a disk with the small radius 14\% and the big radius 36\% of the found frequencies in the image.
 
-After applying the Inverse Fast Fourier Transform, we can observe that the low (the background) and the high (the noise) frequencies were removed. I successfully removed the background and the noise and still remained with the general letter outline in the image as can be seen in Figure [TODO: la fel ca cel de la results].
+After applying the Inverse Fast Fourier Transform, we can observe that the low (the background) and the high (the noise) frequencies were removed. I successfully removed the background and the noise and still remained with the general letter outline in the image as can be seen in Figure \ref{fig:text_detection-bandpassed_segment} and \ref{fig:text_detection-bandpassed_segment-zoomed}.
 
 The huge benefit of this method is that it can be applied to more images using the same band-pass filter, without changing the cutoffs.
 
 \begin{figure}
+    \centering
+    \begin{minipage}[c]{0.5\linewidth}
         \centering
-        \begin{minipage}[c]{0.4\linewidth}
+        \includegraphics[height=6cm, keepaspectratio]{img/algos/text_detection-freq_domain-original.jpg}
+        \caption{Frequency domain of Figure \ref{fig:text_detection-segment}}
+        \label{fig:text_detection-freq_domain_original}
+    \end{minipage}\hfill
+    \begin{minipage}[c]{0.5\linewidth}
         \centering
-        \includegraphics[height=0.4\linewidth]{img/algos/freq-domain_original.JPG}
-        \caption{Frequency domain}
-        \label{fig:freq-domain-original}
-    \end{minipage}
-    \begin{minipage}[c]{0.4\linewidth}
+        \includegraphics[height=6cm, keepaspectratio]{img/algos/text_detection-freq_domain-bandpassed.jpg}
+        \caption{Filtered frequency domain of Figure \ref{fig:text_detection-segment}}
+        \label{fig:text_detection-freq_domain_filtered}
+    \end{minipage}\hfill
+\end{figure}
+
+\begin{figure}
+    \centering
+    \begin{minipage}[c]{0.37\linewidth}
         \centering
-        \includegraphics[height=0.4\linewidth]{img/algos/freq-domain_filtered.JPG}
-        \caption{Filtered frequency domain}
-        \label{fig:freq-domain-filtered}
-    \end{minipage}
+        \includegraphics[height=5.9cm, keepaspectratio]{img/algos/text_detection-bandpassed_img.jpg}
+        \caption{Filtered segment \ref{fig:text_detection-segment}}
+        \label{fig:text_detection-bandpassed_segment}
+    \end{minipage}\hfill
+    \begin{minipage}[c]{0.63\linewidth}
+        \centering
+        \includegraphics[width=9.6cm, keepaspectratio]{img/algos/text_detection-bandpassed_img-zoomed.jpg}
+        \caption{Zoom on text in filtered segment \ref{fig:text_detection-bandpassed_segment}}
+        \label{fig:text_detection-bandpassed_segment-zoomed}
+    \end{minipage}\hfill
 \end{figure}
 
 \paragraph*{Results:}\mbox{}\par
-Outputs an image like in Figure [TODO:], where letter shapes could be observed. There are also artifacts remaining that will be dealt with at a later stage.
+Outputs an image like in Figure \ref{fig:text_detection-bandpassed_segment}, where letter shapes could be observed. There are also artifacts remaining that will be dealt with at a later stage.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% b) Morphological Operation                           %%%
@@ -350,7 +429,7 @@ Outputs an image like in Figure [TODO:], where letter shapes could be observed. 
 Enhances the darker regions representing the letter contours that are surrounded by brighter regions.
 
 \paragraph*{Reasoning:}\mbox{}\par
-It can be seen that in the resulted image at the previous step (Figure [TODO: ca mai sus]), the letters have an outline in dark pixels surrounded by bright regions. It can be more clearly seen in Figure [TODO: zoom pe litera]. By extracting this outline of the letters, we will be able to have the letters more prominent in the image than other features.
+It can be seen that in the resulted image at the previous step (Figure \ref{fig:text_detection-bandpassed_segment}), the letters have an outline in dark pixels surrounded by bright regions. It can be more clearly seen in Figure \ref{fig:text_detection-bandpassed_segment-zoomed}. By extracting this outline of the letters, we will be able to have the letters more prominent in the image than other features.
 
 \paragraph*{Algorithm:}\mbox{}\par
 A morphological operation is based on mathematical morphology \cite{article:mathematical-morphology}. The main components to it are an object $A$ (our image) and a structuring element $B$. Normally, these operations are applied on binary images but variations exist that let them to be used also on gray-scale ones. Firstly, a path must be created for our structuring element ($B$) to traverse the edge of the object ($A$). This path if formally defined as a function that maps points from our image to a real line.
@@ -361,7 +440,14 @@ where $b$ is a structuring element and $\bullet$ means the closing operation tha
 \[A \bullet B = (A \oplus B) \ominus B\]
 
 \paragraph*{Results:}\mbox{}\par
-The result of this step can be seen in Figure [TODO:]. The figure has the brightness increased for viewing, but even if it's a darker image, it would not be a problem for a thresholding algorithm that can select his own threshold. This is why, in the next step we apply OTSU thresholding.
+The result of this step can be seen in Figure \ref{fig:text_detection-blackhat_on_bandpassed_segment}. The figure has the brightness increased for viewing, but even if it's a darker image, it would not be a problem for a thresholding algorithm that can select his own threshold. This is why, in the next step we apply OTSU thresholding.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=8cm, keepaspectratio]{img/algos/text_detection-blackhat_on_bandpassed.jpg}
+    \caption{Blackhat applied on Figure \ref{fig:text_detection-bandpassed_segment}}
+    \label{fig:text_detection-blackhat_on_bandpassed_segment}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% c) OTSU Thresholding                                 %%%
@@ -398,13 +484,20 @@ As a last step (line \ref{line:OTSU:threshold-selection}) we select the threshol
 \end{algorithm}
 
 \paragraph*{Results:}\mbox{}\par
-It can be seen in Figure [TODO:] that the letters or text remains almost as a connected component while the artifacts span across the entire segment or are small dots. This is very helpful as we can filter for the components that have a certain size and shape.
+It can be seen in Figure \ref{fig:text_detection-OTSU_on_blackhat} that the letters or text remains almost as a connected component while the artifacts span across the entire segment or are small dots. This is very helpful as we can filter for the components that have a certain size and shape.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=8cm, keepaspectratio]{img/algos/text_detection-OTSU_on_blackhat.jpg}
+    \caption{Supposed text areas (OTSU applied on Figure \ref{fig:text_detection-blackhat_on_bandpassed_segment})}
+    \label{fig:text_detection-OTSU_on_blackhat}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Filtering Artifacts}
 
 \paragraph*{Accomplishes:}\mbox{}\par
-The artifacts that can be seen in Figure [TODO: cea de mai sus] are removed as much as possible, while retaining the letters' shapes in the binary map. This process is a combination of heuristics and morphological operations.
+The artifacts that can be seen in Figure \ref{fig:text_detection-OTSU_on_blackhat} are removed as much as possible, while retaining the letters' shapes in the binary map. This process is a combination of heuristics and morphological operations.
 
 \paragraph*{Reasoning:}\mbox{}\par
 Because the output of this step will be used in voting the regions of interest the text recognition will take place on, we would like to discard as many artifacts as possible. A big majority of them can be identified and removed because of their shape and size. The regions of text we are interested in are elongated and not very tall, while the letters have a common supple shape.
@@ -445,16 +538,23 @@ I search again for the connected components ($CCs$) in the image as they might h
 And now, as a last step (line \ref{alg:filtering-artifacts:filter-2}), I apply another filtration with other rules. In my experiments, I observed that some more artifacts could be eliminated at this step so I chose to do just that. The rules for removing these artifacts ($heu_2$\label{filtering:heuristics-2}) are:  $h < 26p \;|\; w < 10p$ (even if this was a letter, it would be too small to be recognizable), $h/w > 1.5 \;|\; h/w < 0.33$ or $h > 0.33*h_{seg} \;\&\; w > 0.66*w_{seg}$. Practically, almost the same rules as in the first round of filtration, just that now the height of the component must be bigger as we have applied dilation a few times already.
 
 \paragraph*{Results:}\mbox{}\par
-Even if the filtering process gives some false negatives and lets some artifacts to pass, it would be way worse to have false positives and start removing from the tire-markings themselves. I am satisfied with the results that can be seen in Figure [TODO: poate aici sa lipesc mai multe poze ca sa arate pe mai multe cazuri]. This bitmap will be used for voting in the accumulator that has the same size with the unwrapped image.
+Even if the filtering process gives some false negatives and lets some artifacts to pass, it would be way worse to have false negatives and start removing from the tire-markings themselves. I am satisfied with the current state of the filter because as can be seen in Figure \ref{fig:text_detection-bitmap_segment} I could eliminate the vast majority of the artifacts present in Figure \ref{fig:text_detection-OTSU_on_blackhat}. This bitmap will be used for voting in the accumulator that has the same size with the unwrapped image.
 
 Finding connected components is a quite expensive operation, so further improvement could be done on this step in order to reduce the number of searches for connected components to speed up the pipeline.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=6cm, keepaspectratio]{img/algos/text_detection-bitmap_segment.jpg}
+    \caption{Resulted binary image with supposed text areas after artifact filtering}
+    \label{fig:text_detection-bitmap_segment}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Voting}
 
 Now that the segment was processed (revealed the zone where text is present and removed as much as possible of the artifacts present in the image), the white zones that remained will have their corresponding place in the accumulator matrix (that is the same size with the unwrapped image) increased by one. This is the action that I called voting. Because of the overlap between segments this voting step can be used to further reduce the number of false positive regions of interest.
 
-After all the segments were processed, it results a voting map like the one in Figure [TODO: sa i fac enhance ca sa fie mai vizibila pe foaie] (it was enhanced to be more visible), where the brighter the region, the more votes it got. But this voting accumulator can be further processed in order to reduce the zones that will remain as regions of interest for the text recognition part of the pipeline.
+After all the segments were processed, it results a voting map like the one in Figure \ref{fig:text_detection-voting_map} (it was enhanced to be more visible), where the brighter the region, the more votes it got. But this voting accumulator can be further processed in order to reduce the zones that will remain as regions of interest for the text recognition part of the pipeline.
 
 The filtration could be described by the pseudo-code in Algorithm \ref{alg:voting-filtering}. I start off with a threshold operation, where I discard any region that did not get at least 3 votes. This step is done to reduce the artifacts that appeared only in some segments. The thresholding operation also makes the pixels that passed the check to have the maximum value, resulting in the accumulator becoming a binary image.
 
@@ -480,11 +580,25 @@ On the filtered accumulator matrix, 4 iterations of the morphological operation 
 
 Now, on the newly diluted accumulator matrix and the new connected components, we apply another filtration using the heuristics $heu_4$\label{filtering:heuristics-4} that consist of: heuristic \hyperref[filtering:heuristics-3]{$hre_3$}, $h > 200p$ (the text region is too tall so it is a region that we are not interested in) or $h > 100p \;\&\; h/w > 0.85$ (a region too tall that doesn't have a prominent enough shape).
 
-The result of this step is a bitmap that when applied over the wrapped tire shows regions of text (Figure \ref{fig:text-regions-on-unwrapped-tire}). This bitmap will be used in the text recognition stage to indicate the regions of interest in the image and reduce the space on wich the algorithm will run on.
+The result of this step is a bitmap (Figure \ref{fig:text_detection-binarymap}) that when applied over the wrapped tire shows regions of text (Figure \ref{fig:text-regions-on-unwrapped-tire}). This bitmap will be used in the text recognition stage to indicate the regions of interest in the image and reduce the space on wich the algorithm will run on.
 
 \begin{figure}
     \centering
-    \includegraphics[width=15.9cm]{img/algos/text-regions-on-unwrapped-tire.JPG}
+    \includegraphics[width=15.9cm, keepaspectratio]{img/algos/text_detection-voting_map.png}
+    \caption{Voting map}
+    \label{fig:text_detection-voting_map}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth, keepaspectratio]{img/algos/text_detection-binarymap1.png}
+    \caption{Binary map with text regions}
+    \label{fig:text_detection-binarymap}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=15.9cm, keepaspectratio]{img/algos/text_detection-bounding_boxes_on_detected_text.png}
     \caption{Text Regions on Unwrapped Tire}
     \label{fig:text-regions-on-unwrapped-tire}
 \end{figure}
@@ -496,7 +610,7 @@ The result of this step is a bitmap that when applied over the wrapped tire show
 
 \paragraph*{Accomplishes:}\mbox{}\par
 
-Now that we have reduced our unwrapped image to a few regions of interest, we can use an OCR to start extracting the text. This will be the output of our system and it will define our performance.
+Now that we have reduced our unwrapped image to a few regions of interest, we can use an OCR to start extracting the text. This will be the output of our system and it will define our performance. The quality of the input images is also an important factor because during the evaluation of the system I observed that blurry and darker images (like Figure \ref{fig:text_recognition-blurry_image}) -- which translates in a lower contrast in the image -- have the text not recognized at all.
 
 \paragraph*{Reasoning:}\mbox{}\par
 
@@ -506,6 +620,13 @@ It could be considered that the reason is stated in the \hyperref[sec:motivation
 The OCR I used is a service from Microsoft Cognitive Solutions \cite{site:Microsoft_Cognitive_Services} and it uses "deep-learning-based models and works with text on a variety of surfaces and backgrounds" (source: \cite{site:Microsoft_Cognitive_Services-Explained}). So, it is not specially tailored to our case (tire images). This is a good thing as it provides versatility at the expense of performance and openness of the system.
 
 The Read API (that is the OCR's name) \cite{site:Microsoft_Cognitive_Services-Read_API-OCR} is accessed through API calls to a configured endpoint. For each region of interest extracted in the Text Detection \ref{sec:text-detection} section, a request is sent to the endpoint which returns its guess on the text in the image. While not being able to perform all the processing on only one local machine (as we had to rely on the computation power and OCR solution hosted on a remote server), the impact this has on performance is reduced because we submit only the regions of interest (which have a smaller size than the original unwrapped tire image).
+
+\begin{figure}
+    \centering
+    \includegraphics[width=15.9cm, keepaspectratio]{img/algos/text_recognition-blurry_image.png}
+    \caption{Blurry and lower contrast image}
+    \label{fig:text_recognition-blurry_image}
+\end{figure}
 
 \paragraph*{Results:}\mbox{}\par
 The results from this stage are in the form of annotations that are coupled with the original detected region of interest. The recognized text returned by the OCR will be categorized in the following categories: DOT serial code, E-Mark certification and miscellaneous.

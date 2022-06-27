@@ -50,27 +50,13 @@ My solution is to create a more scalable and easier to deploy image processing p
 
 \subsubsection{Tire Unwrapping}
 
-Consists of the process of determining where in the image the tire is situated, detecting its outer edge, inner edge and the center of the tire, and converting the circular shape of the tire in a rectangular one (unwrapping). In Figure \ref{fig:dataset-entry-example} we can see the image of a tire that has its circles detected and which are used to obtain its unwrapped version (Figure \ref{fig:tire_unwrapping-unwrapped}). In the unwrapped version it can be seen that the tire is not perfectly straight because of the perspective of the captured image. If the camera was not perpendicular on the tire's plane and in line with the wheel's axle, the tire has a slight oval shape that is accentuated by the unwrapping as an oval has 2 centers and not only one.
-
-\begin{figure}
-    \centering
-    \includegraphics[width=\linewidth, keepaspectratio]{img/algos/tire_unwrapping-unwrapped.jpg}
-    \caption{Unwrapped tire}
-    \label{fig:tire_unwrapping-unwrapped}
-\end{figure}
+Consists of the process of determining where in the image the tire is situated, detecting its outer edge, inner edge and the center of the tire, and converting the circular shape of the tire in a rectangular one (unwrapping). In Figure \ref{fig:dataset-entry-example} we can see the image of a tire which will have its circles detected. The circles are used to obtain an unwrapped image of the tire (Figure \ref{fig:tire_unwrapping-unwrapped}). In the unwrapped version it can be seen that the tire is not perfectly straight because of the perspective of the captured image. If the camera was not perpendicular on the tire's plane and in line with the wheel's axle, the tire has a slight oval shape that is accentuated by the unwrapping as an oval has 2 centers and not only one.
 
 \subsubsection{Text Detection}
 
 The scope of this stage, is to determine the regions where text might be present. Because the final stage, text recognition, can be one of the most computationally intensive parts and the image's pixel count is still quite high after the unwrapping (4,804,166 pixels in average), we want to reduce the space where we try to recognize characters.
 
 I opted this stage to not use machine learning and pre-trained models and instead to have a deterministic approach by using a combination of processing techniques and greedy components detection. My approach was to pass the image in the frequency domain in order to remove the high frequencies from the image -- as those tend to represent noise -- and the low frequencies -- who usually represent the uniform background color of the tire, leaving the markings behind. This was difficult to accomplish as the tire-markings -- being embossed letters -- are not very prominent compared to the background of the tire (for example Figure \ref{fig:tire_markings}a) without controlling lighting conditions. I needed through multiple tests to come up with a series of heuristics to propose the areas that contain text. At this stage I accepted to allow a higher number of false positives in the regions than a higher number of false negatives (who would have meant to miss on some text regions). It will be the task of the next stage to deal with the falsely voted regions of text. In the end, I output a binary image (Figure \ref{fig:text_detection-binarymap}) with the same size as the unwrapped one. The white pixels represent supposed text area that the next stage should attempt to recognize.
-
-\begin{figure}
-    \centering
-    \includegraphics[width=\linewidth, keepaspectratio]{img/algos/text_detection-binarymap1.png}
-    \caption{Binary map with text regions}
-    \label{fig:text_detection-binarymap}
-\end{figure}
 
 \subsubsection{Text Recognition}
 

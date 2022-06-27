@@ -61,7 +61,7 @@ In this part, I have implemented my heuristics for reducing the number of circle
             circles = combined_circles
 \end{lstlisting}
 
-It must be noted that I decided to create a new circle from the 2 ones that I considered to be the same one by averaging their centers and radii. The complexity of this algorithm is $O(N^2)$ where $N$ is the number of circles, which is around (TODO: average the no of detected circles).
+It must be noted that I decided to create a new circle from the 2 ones that I considered to be the same one by averaging their centers and radii. The complexity of this algorithm is $O(N^2)$ where $N$ is the number of circles, which is in average 3.36.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% d) Conversion to Polar Coordinates                   %%%
@@ -112,7 +112,7 @@ The core of the system that enabled the pipeline to detect text on the tire is t
         return filtered_seg
 \end{lstlisting}
 
-Firstly I use the numpy library to apply a 2 dimensional Fast Fourier Transform on the segment to pass it into the frequency domain. The function outputs a matrix of complex numbers which is fed into the function $numpy.fft.fftshift$ to bring the zero frequency part of the array into it's center (Figure \ref{fig:freq-domain-original}). After this, I create a mask which is a disk with the small radius 7\% of the dimension of the image and the big radius 18\% of the dimension of the image. The mask is then multiplied with the complex numbers in the frequency domain. This action acts as a band-pass filter. Then the remaining frequencies are used to apply the Inverse Fast Fourier Transform to get the filtered segment.
+Firstly I use the numpy library to apply a 2 dimensional Fast Fourier Transform on the segment to pass it into the frequency domain. The function outputs a matrix of complex numbers which is fed into the function $numpy.fft.fftshift$ to bring the zero frequency part of the array into it's center (Figure \ref{fig:text_detection-freq_domain_original}). After this, I create a mask which is a disk with the small radius 7\% of the dimension of the image and the big radius 18\% of the dimension of the image. The mask is then multiplied with the complex numbers in the frequency domain. This action acts as a band-pass filter. Then the remaining frequencies are used to apply the Inverse Fast Fourier Transform to get the filtered segment.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% f) Black Hat Morphological Operation                 %%%
